@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { mockClasses } from '@/lib/mock-data'
-import { BookOpen, CheckCircle, DollarSign, Users } from 'lucide-react'
+import { BookOpen, CheckCircle, DollarSign, Users, Video } from 'lucide-react'
 import {
   ChartContainer,
   ChartTooltip,
@@ -18,6 +18,7 @@ import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts'
 import { PageTransition } from '@/components/PageTransition'
 import { DashboardSkeleton } from '@/components/skeletons'
 import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
 
 const chartData = [
   { month: 'Jan', revenue: 1200 },
@@ -121,6 +122,42 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Admin Content Section */}
+      <Card className="bg-gradient-to-r from-primary/10 to-transparent border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Video className="h-5 w-5 text-primary" />
+            Conteúdos da Plataforma
+          </CardTitle>
+          <CardDescription>
+            Aulas e materiais disponibilizados pela administração.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="bg-background/80 p-4 rounded-lg border shadow-sm hover:shadow-md transition-all cursor-pointer"
+              >
+                <div className="aspect-video bg-muted rounded-md mb-3 flex items-center justify-center">
+                  <Video className="h-8 w-8 text-muted-foreground/50" />
+                </div>
+                <h3 className="font-semibold text-sm">
+                  Metodologia de Ensino {i}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Atualizado há 2 dias
+                </p>
+                <Button size="sm" variant="secondary" className="w-full mt-3">
+                  Acessar
+                </Button>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4 hover:shadow-md transition-shadow duration-300">

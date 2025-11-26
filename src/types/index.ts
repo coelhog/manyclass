@@ -107,9 +107,47 @@ export interface UpdateEventDTO extends Partial<CreateEventDTO> {
 
 export interface Payment {
   id: string
-  student: string
+  student: string // Name of the student (legacy) or ID
+  studentId?: string // ID of the student
   description: string
   amount: number
   dueDate: string
   status: 'paid' | 'pending' | 'overdue'
+}
+
+export interface Material {
+  id: string
+  title: string
+  description: string
+  fileUrl: string
+  fileType: string
+  uploadedAt: string
+  studentIds: string[] // List of students who have access
+}
+
+export type MessageType =
+  | 'class_reminder'
+  | 'payment_reminder'
+  | 're_engagement'
+
+export interface AutomatedMessage {
+  id: string
+  title: string
+  type: MessageType
+  template: string
+  isActive: boolean
+  timing: string // e.g., "30_min_before", "7_days_after"
+}
+
+export interface TimeSlot {
+  dayOfWeek: number // 0-6
+  startTime: string // HH:mm
+  endTime: string // HH:mm
+  planIds: PlanType[] // Plans that can book this slot
+}
+
+export interface TeacherSchedule {
+  id: string
+  teacherId: string
+  availability: TimeSlot[]
 }

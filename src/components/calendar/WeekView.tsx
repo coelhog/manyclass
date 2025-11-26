@@ -48,7 +48,7 @@ export function WeekView({
   return (
     <div className="flex flex-col h-full border rounded-lg overflow-hidden bg-card animate-in fade-in duration-500">
       <ScrollArea className="h-full">
-        <div className="min-w-[800px] md:min-w-0">
+        <div className="min-w-[800px]">
           <div className="grid grid-cols-8 border-b bg-muted/40 sticky top-0 z-30">
             <div className="py-2 text-center text-sm font-medium text-muted-foreground border-r bg-muted/40">
               Hora

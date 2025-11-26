@@ -9,6 +9,8 @@ import {
   BookOpen,
   LogOut,
   CheckSquare,
+  MessageSquare,
+  Clock,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import {
@@ -39,8 +41,10 @@ export function AppSidebar() {
     { title: 'Alunos', url: '/students', icon: Users },
     { title: 'Turmas', url: '/classes', icon: GraduationCap },
     { title: 'Calendário', url: '/calendar', icon: Calendar },
+    { title: 'Agenda', url: '/schedule', icon: Clock },
     { title: 'Tarefas', url: '/tasks', icon: CheckSquare },
     { title: 'Materiais', url: '/materials', icon: BookOpen },
+    { title: 'Mensagens', url: '/messages', icon: MessageSquare },
     { title: 'Pagamentos', url: '/payments', icon: Wallet },
     { title: 'Configurações', url: '/settings', icon: Settings },
   ]

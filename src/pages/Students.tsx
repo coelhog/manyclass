@@ -21,7 +21,17 @@ import {
 import { Label } from '@/components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, MoreHorizontal, Trash2, Edit, Eye } from 'lucide-react'
+import {
+  Plus,
+  Search,
+  MoreHorizontal,
+  Trash2,
+  Edit,
+  Eye,
+  Upload,
+  FileDown,
+  UserPlus,
+} from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,18 +44,27 @@ import { Student } from '@/types'
 import { Link } from 'react-router-dom'
 import { PageTransition } from '@/components/PageTransition'
 import { TableSkeleton } from '@/components/skeletons'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 export default function Students() {
   const [students, setStudents] = useState<Student[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false)
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
+
   const [newStudent, setNewStudent] = useState({
     name: '',
     email: '',
     phone: '',
     level: 'A1',
   })
+
+  const [bulkStudents, setBulkStudents] = useState([
+    { name: '', email: '', phone: '', level: 'A1' },
+  ])
+
   const { toast } = useToast()
 
   const loadStudents = useCallback(async () => {
@@ -92,6 +111,71 @@ export default function Students() {
     }
   }
 
+  const handleBulkCreate = async () => {
+    const validStudents = bulkStudents.filter((s) => s.name && s.email)
+    if (validStudents.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Adicione pelo menos um aluno válido',
+      })
+      return
+    }
+
+    try {
+      const studentsToCreate = validStudents.map((s) => ({
+        ...s,
+        status: 'active' as const,
+        avatar: `https://img.usecurling.com/ppl/thumbnail?gender=male&seed=${Math.random()}`,
+        joinedAt: new Date().toISOString().split('T')[0],
+      }))
+
+      await studentService.createBulk(studentsToCreate)
+      toast({
+        title: `${validStudents.length} alunos adicionados com sucesso!`,
+      })
+      setIsBulkDialogOpen(false)
+      setBulkStudents([{ name: '', email: '', phone: '', level: 'A1' }])
+      loadStudents()
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Erro ao adicionar alunos' })
+    }
+  }
+
+  const handleImport = async () => {
+    // Mock import
+    toast({ title: 'Importando alunos...' })
+    setTimeout(async () => {
+      try {
+        const mockImported = [
+          {
+            name: 'Importado 1',
+            email: 'imp1@test.com',
+            phone: '1199999999',
+            level: 'A1',
+            status: 'active' as const,
+            avatar: '',
+            joinedAt: new Date().toISOString(),
+          },
+          {
+            name: 'Importado 2',
+            email: 'imp2@test.com',
+            phone: '1188888888',
+            level: 'B1',
+            status: 'active' as const,
+            avatar: '',
+            joinedAt: new Date().toISOString(),
+          },
+        ]
+        await studentService.createBulk(mockImported)
+        toast({ title: 'Arquivo processado com sucesso!' })
+        setIsImportDialogOpen(false)
+        loadStudents()
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Erro na importação' })
+      }
+    }, 1500)
+  }
+
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este aluno?')) {
       try {
@@ -104,84 +188,210 @@ export default function Students() {
     }
   }
 
+  const addBulkRow = () => {
+    setBulkStudents([
+      ...bulkStudents,
+      { name: '', email: '', phone: '', level: 'A1' },
+    ])
+  }
+
+  const updateBulkRow = (index: number, field: string, value: string) => {
+    const newBulk = [...bulkStudents]
+    newBulk[index] = { ...newBulk[index], [field]: value }
+    setBulkStudents(newBulk)
+  }
+
   return (
     <PageTransition className="space-y-8">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Alunos</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="shadow-sm hover:shadow-md transition-all">
-              <Plus className="mr-2 h-4 w-4" /> Adicionar Aluno
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Adicionar Novo Aluno</DialogTitle>
-              <DialogDescription>
-                Preencha os dados do aluno para adicioná-lo ao sistema.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Nome
-                </Label>
-                <Input
-                  id="name"
-                  className="col-span-3"
-                  value={newStudent.name}
-                  onChange={(e) =>
-                    setNewStudent({ ...newStudent, name: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="email" className="text-right">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  className="col-span-3"
-                  value={newStudent.email}
-                  onChange={(e) =>
-                    setNewStudent({ ...newStudent, email: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="phone" className="text-right">
-                  Telefone
-                </Label>
-                <Input
-                  id="phone"
-                  className="col-span-3"
-                  value={newStudent.phone}
-                  onChange={(e) =>
-                    setNewStudent({ ...newStudent, phone: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="level" className="text-right">
-                  Nível
-                </Label>
-                <Input
-                  id="level"
-                  className="col-span-3"
-                  value={newStudent.level}
-                  onChange={(e) =>
-                    setNewStudent({ ...newStudent, level: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" onClick={handleCreate}>
-                Salvar
+        <div className="flex gap-2">
+          <Dialog
+            open={isImportDialogOpen}
+            onOpenChange={setIsImportDialogOpen}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" className="shadow-sm">
+                <Upload className="mr-2 h-4 w-4" /> Importar
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Importar Alunos</DialogTitle>
+                <DialogDescription>
+                  Faça upload de um arquivo CSV ou Excel para importar alunos em
+                  massa.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => toast({ title: 'Template baixado!' })}
+                >
+                  <FileDown className="mr-2 h-4 w-4" /> Baixar Modelo
+                </Button>
+                <div className="border-2 border-dashed rounded-lg p-8 text-center hover:bg-accent/50 cursor-pointer transition-colors">
+                  <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Clique ou arraste o arquivo aqui
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleImport}>Processar Arquivo</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="shadow-sm">
+                <UserPlus className="mr-2 h-4 w-4" /> Múltiplos
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>Adicionar Múltiplos Alunos</DialogTitle>
+                <DialogDescription>
+                  Preencha os dados dos alunos abaixo.
+                </DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="h-[300px] pr-4">
+                <div className="space-y-4">
+                  {bulkStudents.map((student, index) => (
+                    <div
+                      key={index}
+                      className="grid grid-cols-4 gap-2 items-end border-b pb-4"
+                    >
+                      <div>
+                        <Label className="text-xs">Nome</Label>
+                        <Input
+                          value={student.name}
+                          onChange={(e) =>
+                            updateBulkRow(index, 'name', e.target.value)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Email</Label>
+                        <Input
+                          value={student.email}
+                          onChange={(e) =>
+                            updateBulkRow(index, 'email', e.target.value)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Telefone</Label>
+                        <Input
+                          value={student.phone}
+                          onChange={(e) =>
+                            updateBulkRow(index, 'phone', e.target.value)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Nível</Label>
+                        <Input
+                          value={student.level}
+                          onChange={(e) =>
+                            updateBulkRow(index, 'level', e.target.value)
+                          }
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    onClick={addBulkRow}
+                    className="w-full"
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Adicionar Linha
+                  </Button>
+                </div>
+              </ScrollArea>
+              <DialogFooter>
+                <Button onClick={handleBulkCreate}>Salvar Todos</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="shadow-sm hover:shadow-md transition-all">
+                <Plus className="mr-2 h-4 w-4" /> Novo Aluno
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Adicionar Novo Aluno</DialogTitle>
+                <DialogDescription>
+                  Preencha os dados do aluno para adicioná-lo ao sistema.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Nome
+                  </Label>
+                  <Input
+                    id="name"
+                    className="col-span-3"
+                    value={newStudent.name}
+                    onChange={(e) =>
+                      setNewStudent({ ...newStudent, name: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="email" className="text-right">
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    className="col-span-3"
+                    value={newStudent.email}
+                    onChange={(e) =>
+                      setNewStudent({ ...newStudent, email: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="phone" className="text-right">
+                    Telefone
+                  </Label>
+                  <Input
+                    id="phone"
+                    className="col-span-3"
+                    value={newStudent.phone}
+                    onChange={(e) =>
+                      setNewStudent({ ...newStudent, phone: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="level" className="text-right">
+                    Nível
+                  </Label>
+                  <Input
+                    id="level"
+                    className="col-span-3"
+                    value={newStudent.level}
+                    onChange={(e) =>
+                      setNewStudent({ ...newStudent, level: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit" onClick={handleCreate}>
+                  Salvar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">

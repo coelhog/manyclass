@@ -12,7 +12,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Plus, Search, DollarSign } from 'lucide-react'
 import { studentService } from '@/services/studentService'
-import { Payment } from '@/types'
+import { Payment, Student } from '@/types'
 import { PageTransition } from '@/components/PageTransition'
 import { TableSkeleton } from '@/components/skeletons'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -27,13 +27,21 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export default function Payments() {
   const [payments, setPayments] = useState<Payment[]>([])
+  const [students, setStudents] = useState<Student[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newPayment, setNewPayment] = useState({
-    student: '',
+    studentId: '',
     description: '',
     amount: 0,
     dueDate: '',
@@ -41,21 +49,25 @@ export default function Payments() {
   const { toast } = useToast()
 
   useEffect(() => {
-    loadPayments()
+    loadData()
   }, [])
 
-  const loadPayments = async () => {
+  const loadData = async () => {
     setIsLoading(true)
     try {
-      const data = await studentService.getAllPayments()
-      setPayments(data)
+      const [payData, studData] = await Promise.all([
+        studentService.getAllPayments(),
+        studentService.getAll(),
+      ])
+      setPayments(payData)
+      setStudents(studData)
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleCreate = async () => {
-    if (!newPayment.student || !newPayment.amount) {
+    if (!newPayment.studentId || !newPayment.amount) {
       toast({
         variant: 'destructive',
         title: 'Preencha os campos obrigatórios',
@@ -63,15 +75,17 @@ export default function Payments() {
       return
     }
     try {
+      const student = students.find((s) => s.id === newPayment.studentId)
       await studentService.createPayment({
         ...newPayment,
+        student: student?.name || 'Unknown',
         status: 'pending',
         dueDate: newPayment.dueDate || new Date().toISOString(),
       })
       toast({ title: 'Pagamento registrado com sucesso!' })
       setIsDialogOpen(false)
-      loadPayments()
-      setNewPayment({ student: '', description: '', amount: 0, dueDate: '' })
+      loadData()
+      setNewPayment({ studentId: '', description: '', amount: 0, dueDate: '' })
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao registrar pagamento' })
     }
@@ -99,15 +113,25 @@ export default function Payments() {
                 <Label htmlFor="student" className="text-right">
                   Aluno
                 </Label>
-                <Input
-                  id="student"
-                  className="col-span-3"
-                  value={newPayment.student}
-                  onChange={(e) =>
-                    setNewPayment({ ...newPayment, student: e.target.value })
-                  }
-                  placeholder="Nome do aluno"
-                />
+                <div className="col-span-3">
+                  <Select
+                    value={newPayment.studentId}
+                    onValueChange={(v) =>
+                      setNewPayment({ ...newPayment, studentId: v })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o aluno" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {students.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="description" className="text-right">

@@ -33,6 +33,20 @@ export const studentService = {
     return newStudent
   },
 
+  createBulk: async (
+    studentsData: Omit<Student, 'id'>[],
+  ): Promise<Student[]> => {
+    await delay(800)
+    const students = await studentService.getAll()
+    const newStudents = studentsData.map((s) => ({
+      ...s,
+      id: Math.random().toString(36).substr(2, 9),
+    }))
+    const updated = [...students, ...newStudents]
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+    return newStudents
+  },
+
   update: async (id: string, data: Partial<Student>): Promise<Student> => {
     await delay(300)
     const students = await studentService.getAll()

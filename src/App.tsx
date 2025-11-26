@@ -19,6 +19,8 @@ import TaskDetail from './pages/TaskDetail'
 import Materials from './pages/Materials'
 import Payments from './pages/Payments'
 import Settings from './pages/Settings'
+import AutomatedMessages from './pages/AutomatedMessages'
+import TeacherSchedule from './pages/TeacherSchedule'
 import NotFound from './pages/NotFound'
 
 // Admin Pages
@@ -62,6 +64,8 @@ const App = () => (
               <Route path="/tasks/:id" element={<TaskDetail />} />
               <Route path="/materials" element={<Materials />} />
               <Route path="/payments" element={<Payments />} />
+              <Route path="/messages" element={<AutomatedMessages />} />
+              <Route path="/schedule" element={<TeacherSchedule />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
