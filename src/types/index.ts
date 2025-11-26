@@ -80,3 +80,12 @@ export interface CreateEventDTO {
 export interface UpdateEventDTO extends Partial<CreateEventDTO> {
   id: string
 }
+
+export interface Payment {
+  id: string
+  student: string
+  description: string
+  amount: number
+  dueDate: string
+  status: 'paid' | 'pending' | 'overdue'
+}

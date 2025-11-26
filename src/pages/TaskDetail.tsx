@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { taskService } from '@/services/taskService'
 import { studentService } from '@/services/studentService'
@@ -22,13 +22,7 @@ export default function TaskDetail() {
   const [grades, setGrades] = useState<Record<string, string>>({})
   const { toast } = useToast()
 
-  useEffect(() => {
-    if (id) {
-      loadData()
-    }
-  }, [id])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!id) return
     const t = await taskService.getTaskById(id)
     setTask(t || null)
@@ -39,7 +33,13 @@ export default function TaskDetail() {
       const allStudents = await studentService.getAll()
       setStudents(allStudents)
     }
-  }
+  }, [id, user?.role])
+
+  useEffect(() => {
+    if (id) {
+      loadData()
+    }
+  }, [id, loadData])
 
   const handleGrade = async (submissionId: string, grade: number) => {
     try {

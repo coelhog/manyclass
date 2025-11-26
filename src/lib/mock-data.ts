@@ -1,4 +1,11 @@
-import { User, Student, ClassGroup, Task, TaskSubmission } from '@/types'
+import {
+  User,
+  Student,
+  ClassGroup,
+  Task,
+  TaskSubmission,
+  Payment,
+} from '@/types'
 
 export const mockUser: User = {
   id: '1',
@@ -125,5 +132,32 @@ export const mockSubmissions: TaskSubmission[] = [
     submittedAt: '2024-05-18T10:00:00Z',
     grade: 10,
     status: 'graded',
+  },
+]
+
+export const mockPayments: Payment[] = [
+  {
+    id: '1',
+    student: 'João Pedro',
+    description: 'Mensalidade Maio',
+    amount: 350.0,
+    dueDate: '2024-05-10T00:00:00Z',
+    status: 'paid',
+  },
+  {
+    id: '2',
+    student: 'Maria Clara',
+    description: 'Mensalidade Maio',
+    amount: 350.0,
+    dueDate: '2024-05-10T00:00:00Z',
+    status: 'pending',
+  },
+  {
+    id: '3',
+    student: 'Carlos Eduardo',
+    description: 'Material Didático',
+    amount: 150.0,
+    dueDate: '2024-04-15T00:00:00Z',
+    status: 'overdue',
   },
 ]
