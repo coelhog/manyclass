@@ -15,6 +15,9 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart'
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts'
+import { PageTransition } from '@/components/PageTransition'
+import { DashboardSkeleton } from '@/components/skeletons'
+import { useEffect, useState } from 'react'
 
 const chartData = [
   { month: 'Jan', revenue: 1200 },
@@ -34,13 +37,30 @@ const chartConfig = {
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    // Simulate data fetching
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [])
 
   if (user?.role === 'student') {
     return <StudentDashboard />
   }
 
+  if (isLoading) {
+    return (
+      <PageTransition>
+        <DashboardSkeleton />
+      </PageTransition>
+    )
+  }
+
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageTransition className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <div className="text-sm text-muted-foreground">
@@ -50,7 +70,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="hover:shadow-md transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Total de Alunos
@@ -64,7 +84,7 @@ export default function Dashboard() {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="hover:shadow-md transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Turmas Ativas</CardTitle>
             <BookOpen className="h-4 w-4 text-muted-foreground" />
@@ -74,7 +94,7 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground">3 aulas hoje</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="hover:shadow-md transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Tarefas Pendentes
@@ -86,7 +106,7 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground">4 para corrigir</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="hover:shadow-md transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Receita Mensal
@@ -103,7 +123,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+        <Card className="col-span-4 hover:shadow-md transition-shadow duration-300">
           <CardHeader>
             <CardTitle>Receita Recente</CardTitle>
             <CardDescription>Visão geral dos últimos 6 meses</CardDescription>
@@ -111,7 +131,7 @@ export default function Dashboard() {
           <CardContent className="pl-2">
             <ChartContainer config={chartConfig} className="h-[300px] w-full">
               <BarChart data={chartData}>
-                <CartesianGrid vertical={false} />
+                <CartesianGrid vertical={false} strokeDasharray="3 3" />
                 <XAxis
                   dataKey="month"
                   tickLine={false}
@@ -120,12 +140,16 @@ export default function Dashboard() {
                   tickFormatter={(value) => value.slice(0, 3)}
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="revenue" fill="var(--color-revenue)" radius={4} />
+                <Bar
+                  dataKey="revenue"
+                  fill="var(--color-revenue)"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ChartContainer>
           </CardContent>
         </Card>
-        <Card className="col-span-3">
+        <Card className="col-span-3 hover:shadow-md transition-shadow duration-300">
           <CardHeader>
             <CardTitle>Próximas Aulas</CardTitle>
             <CardDescription>Sua agenda para hoje</CardDescription>
@@ -133,12 +157,15 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-8">
               {mockClasses.map((cls) => (
-                <div key={cls.id} className="flex items-center">
-                  <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                <div
+                  key={cls.id}
+                  className="flex items-center group cursor-pointer"
+                >
+                  <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
                     {cls.name.charAt(0)}
                   </div>
                   <div className="ml-4 space-y-1">
-                    <p className="text-sm font-medium leading-none">
+                    <p className="text-sm font-medium leading-none group-hover:text-primary transition-colors">
                       {cls.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -154,6 +181,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageTransition>
   )
 }

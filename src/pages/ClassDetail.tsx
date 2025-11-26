@@ -18,6 +18,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
 import { Label } from '@/components/ui/label'
+import { PageTransition } from '@/components/PageTransition'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function ClassDetail() {
   const { id } = useParams<{ id: string }>()
@@ -26,16 +28,22 @@ export default function ClassDetail() {
   const [allStudents, setAllStudents] = useState<Student[]>([])
   const [selectedStudents, setSelectedStudents] = useState<string[]>([])
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
   const loadData = useCallback(async () => {
     if (!id) return
-    const cls = await classService.getClassById(id)
-    if (cls) {
-      setClassGroup(cls)
-      const all = await studentService.getAll()
-      setAllStudents(all)
-      setStudents(all.filter((s) => cls.studentIds.includes(s.id)))
+    setIsLoading(true)
+    try {
+      const cls = await classService.getClassById(id)
+      if (cls) {
+        setClassGroup(cls)
+        const all = await studentService.getAll()
+        setAllStudents(all)
+        setStudents(all.filter((s) => cls.studentIds.includes(s.id)))
+      }
+    } finally {
+      setIsLoading(false)
     }
   }, [id])
 
@@ -75,16 +83,36 @@ export default function ClassDetail() {
     }
   }
 
-  if (!classGroup) return <div>Carregando...</div>
+  if (isLoading) {
+    return (
+      <PageTransition className="space-y-8">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10 rounded-md" />
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+        <Skeleton className="h-[400px] rounded-xl" />
+      </PageTransition>
+    )
+  }
+
+  if (!classGroup) return <div>Turma não encontrada</div>
 
   const availableStudents = allStudents.filter(
     (s) => !classGroup.studentIds.includes(s.id),
   )
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageTransition className="space-y-8">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          asChild
+          className="hover:bg-muted/50"
+        >
           <Link to="/classes">
             <ArrowLeft className="h-5 w-5" />
           </Link>
@@ -102,7 +130,10 @@ export default function ClassDetail() {
           <CardTitle>Alunos Matriculados ({students.length})</CardTitle>
           <Dialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
+              <Button
+                size="sm"
+                className="shadow-sm hover:shadow-md transition-all"
+              >
                 <Plus className="mr-2 h-4 w-4" /> Adicionar Alunos
               </Button>
             </DialogTrigger>
@@ -115,7 +146,7 @@ export default function ClassDetail() {
                   {availableStudents.map((student) => (
                     <div
                       key={student.id}
-                      className="flex items-center space-x-2"
+                      className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md transition-colors"
                     >
                       <Checkbox
                         id={student.id}
@@ -136,7 +167,7 @@ export default function ClassDetail() {
                       />
                       <Label
                         htmlFor={student.id}
-                        className="flex items-center gap-2 cursor-pointer"
+                        className="flex items-center gap-2 cursor-pointer flex-1"
                       >
                         <Avatar className="h-6 w-6">
                           <AvatarImage src={student.avatar} />
@@ -156,6 +187,7 @@ export default function ClassDetail() {
               <Button
                 onClick={handleAddStudents}
                 disabled={selectedStudents.length === 0}
+                className="w-full"
               >
                 Confirmar
               </Button>
@@ -167,10 +199,10 @@ export default function ClassDetail() {
             {students.map((student) => (
               <div
                 key={student.id}
-                className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
+                className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 group"
               >
                 <div className="flex items-center gap-3">
-                  <Avatar>
+                  <Avatar className="transition-transform group-hover:scale-110">
                     <AvatarImage src={student.avatar} />
                     <AvatarFallback>{student.name[0]}</AvatarFallback>
                   </Avatar>
@@ -184,7 +216,7 @@ export default function ClassDetail() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-destructive hover:text-destructive/90"
+                  className="text-destructive hover:text-destructive/90 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={() => handleRemoveStudent(student.id)}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -199,6 +231,6 @@ export default function ClassDetail() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageTransition>
   )
 }

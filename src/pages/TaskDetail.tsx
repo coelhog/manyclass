@@ -12,6 +12,8 @@ import StudentTaskSubmission from './StudentTaskSubmission'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
+import { PageTransition } from '@/components/PageTransition'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>()
@@ -20,18 +22,24 @@ export default function TaskDetail() {
   const [submissions, setSubmissions] = useState<TaskSubmission[]>([])
   const [students, setStudents] = useState<Student[]>([])
   const [grades, setGrades] = useState<Record<string, string>>({})
+  const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
   const loadData = useCallback(async () => {
     if (!id) return
-    const t = await taskService.getTaskById(id)
-    setTask(t || null)
+    setIsLoading(true)
+    try {
+      const t = await taskService.getTaskById(id)
+      setTask(t || null)
 
-    if (user?.role === 'teacher') {
-      const subs = await taskService.getSubmissionsByTask(id)
-      setSubmissions(subs)
-      const allStudents = await studentService.getAll()
-      setStudents(allStudents)
+      if (user?.role === 'teacher') {
+        const subs = await taskService.getSubmissionsByTask(id)
+        setSubmissions(subs)
+        const allStudents = await studentService.getAll()
+        setStudents(allStudents)
+      }
+    } finally {
+      setIsLoading(false)
     }
   }, [id, user?.role])
 
@@ -51,7 +59,22 @@ export default function TaskDetail() {
     }
   }
 
-  if (!task) return <div>Carregando...</div>
+  if (isLoading) {
+    return (
+      <PageTransition className="space-y-8">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10 rounded-md" />
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+        <Skeleton className="h-[400px] rounded-xl" />
+      </PageTransition>
+    )
+  }
+
+  if (!task) return <div>Tarefa não encontrada</div>
 
   // If student, show submission view
   if (user?.role === 'student') {
@@ -60,9 +83,14 @@ export default function TaskDetail() {
 
   // Teacher View
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageTransition className="space-y-8">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          asChild
+          className="hover:bg-muted/50"
+        >
           <Link to="/tasks">
             <ArrowLeft className="h-5 w-5" />
           </Link>
@@ -87,7 +115,10 @@ export default function TaskDetail() {
             {submissions.map((sub) => {
               const student = students.find((s) => s.id === sub.studentId)
               return (
-                <div key={sub.id} className="border rounded-lg p-4 space-y-4">
+                <div
+                  key={sub.id}
+                  className="border rounded-lg p-4 space-y-4 hover:bg-muted/10 transition-colors"
+                >
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="font-semibold">
@@ -175,6 +206,6 @@ export default function TaskDetail() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageTransition>
   )
 }

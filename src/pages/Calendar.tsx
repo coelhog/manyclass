@@ -1,9 +1,10 @@
 import { CalendarContainer } from '@/components/calendar/CalendarContainer'
+import { PageTransition } from '@/components/PageTransition'
 
 export default function CalendarPage() {
   return (
-    <div className="h-full flex flex-col animate-fade-in">
+    <PageTransition className="h-full flex flex-col">
       <CalendarContainer />
-    </div>
+    </PageTransition>
   )
 }

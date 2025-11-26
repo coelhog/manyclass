@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { taskService } from '@/services/taskService'
-import { Task, TaskSubmission } from '@/types'
+import { Task } from '@/types'
 import {
   Card,
   CardContent,
@@ -11,38 +11,43 @@ import {
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Calendar,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  ArrowRight,
-} from 'lucide-react'
+import { Calendar, CheckCircle2, Clock, ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { PageTransition } from '@/components/PageTransition'
+import { DashboardSkeleton } from '@/components/skeletons'
 
 export default function StudentDashboard() {
   const { user } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
-  const [submissions, setSubmissions] = useState<TaskSubmission[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const loadData = async () => {
-      const allTasks = await taskService.getAllTasks()
-      setTasks(allTasks)
-      // In a real app, we would fetch submissions for the current user
-      // For mock, we just load all and filter
-      // Since we don't have a "getMySubmissions" in service yet, let's mock it here or use what we have
-      // We will just use mockSubmissions from data for now
+      setIsLoading(true)
+      try {
+        const allTasks = await taskService.getAllTasks()
+        setTasks(allTasks)
+      } finally {
+        setIsLoading(false)
+      }
     }
     loadData()
   }, [])
 
   const pendingTasks = tasks.filter((t) => t.status === 'open').slice(0, 3)
 
+  if (isLoading) {
+    return (
+      <PageTransition>
+        <DashboardSkeleton />
+      </PageTransition>
+    )
+  }
+
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageTransition className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Área do Aluno</h1>
@@ -58,7 +63,7 @@ export default function StudentDashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-primary/10 border-primary/20">
+        <Card className="bg-primary/10 border-primary/20 hover:bg-primary/15 transition-colors">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Clock className="h-5 w-5 text-primary" />
@@ -70,7 +75,7 @@ export default function StudentDashboard() {
             <p className="text-xs text-muted-foreground">2 para esta semana</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-500" />
@@ -82,7 +87,7 @@ export default function StudentDashboard() {
             <p className="text-xs text-muted-foreground">Média de notas: 8.5</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Calendar className="h-5 w-5 text-blue-500" />
@@ -97,7 +102,7 @@ export default function StudentDashboard() {
       </div>
 
       <div className="grid gap-8 md:grid-cols-2">
-        <Card className="col-span-1">
+        <Card className="col-span-1 hover:shadow-md transition-shadow">
           <CardHeader>
             <CardTitle>Tarefas Recentes</CardTitle>
             <CardDescription>
@@ -109,10 +114,12 @@ export default function StudentDashboard() {
               {pendingTasks.map((task) => (
                 <div
                   key={task.id}
-                  className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
+                  className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 group"
                 >
                   <div className="space-y-1">
-                    <p className="font-medium">{task.title}</p>
+                    <p className="font-medium group-hover:text-primary transition-colors">
+                      {task.title}
+                    </p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Badge variant="outline" className="text-[10px]">
                         {task.type}
@@ -122,33 +129,39 @@ export default function StudentDashboard() {
                       </span>
                     </div>
                   </div>
-                  <Button size="sm" variant="secondary" asChild>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    asChild
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
                     <Link to={`/tasks/${task.id}`}>Abrir</Link>
                   </Button>
                 </div>
               ))}
             </div>
             <div className="mt-4 pt-4 border-t">
-              <Button variant="ghost" className="w-full" asChild>
+              <Button variant="ghost" className="w-full group" asChild>
                 <Link
                   to="/tasks"
                   className="flex items-center justify-center gap-2"
                 >
-                  Ver todas as tarefas <ArrowRight className="h-4 w-4" />
+                  Ver todas as tarefas{' '}
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1">
+        <Card className="col-span-1 hover:shadow-md transition-shadow">
           <CardHeader>
             <CardTitle>Histórico de Notas</CardTitle>
             <CardDescription>Seus últimos resultados.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
                 <div>
                   <p className="font-medium">Quiz de Gramática</p>
                   <p className="text-xs text-muted-foreground">Inglês A1</p>
@@ -157,7 +170,7 @@ export default function StudentDashboard() {
                   10.0
                 </Badge>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
                 <div>
                   <p className="font-medium">Redação: Minha Família</p>
                   <p className="text-xs text-muted-foreground">Inglês A1</p>
@@ -166,7 +179,7 @@ export default function StudentDashboard() {
                   8.5
                 </Badge>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
                 <div>
                   <p className="font-medium">Listening Exercise</p>
                   <p className="text-xs text-muted-foreground">Inglês A1</p>
@@ -179,6 +192,6 @@ export default function StudentDashboard() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageTransition>
   )
 }

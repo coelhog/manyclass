@@ -13,12 +13,13 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
+import { PageTransition } from '@/components/PageTransition'
 
 export default function Settings() {
   const { user } = useAuth()
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageTransition className="space-y-8">
       <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
 
       <Tabs defaultValue="profile" className="w-full">
@@ -28,7 +29,10 @@ export default function Settings() {
           <TabsTrigger value="system">Sistema</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="profile">
+        <TabsContent
+          value="profile"
+          className="mt-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
+        >
           <Card>
             <CardHeader>
               <CardTitle>Meu Perfil</CardTitle>
@@ -38,7 +42,7 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
+                <Avatar className="h-20 w-20 ring-4 ring-background shadow-sm">
                   <AvatarImage src={user?.avatar} />
                   <AvatarFallback>US</AvatarFallback>
                 </Avatar>
@@ -65,7 +69,10 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="preferences">
+        <TabsContent
+          value="preferences"
+          className="mt-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
+        >
           <Card>
             <CardHeader>
               <CardTitle>Preferências da Aplicação</CardTitle>
@@ -99,7 +106,10 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="system">
+        <TabsContent
+          value="system"
+          className="mt-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
+        >
           <Card>
             <CardHeader>
               <CardTitle>Informações do Sistema</CardTitle>
@@ -108,7 +118,7 @@ export default function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-sm">
+              <div className="text-sm space-y-2">
                 <p>
                   <strong>Versão:</strong> 0.0.1 (Alpha)
                 </p>
@@ -123,6 +133,6 @@ export default function Settings() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </PageTransition>
   )
 }

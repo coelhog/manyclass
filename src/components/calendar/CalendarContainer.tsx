@@ -4,13 +4,12 @@ import {
   subMonths,
   addWeeks,
   subWeeks,
-  startOfDay,
   setHours,
   setMinutes,
   differenceInMinutes,
   addMinutes,
 } from 'date-fns'
-import { CalendarEvent, CreateEventDTO, UpdateEventDTO } from '@/types'
+import { CalendarEvent, CreateEventDTO } from '@/types'
 import { classService } from '@/services/classService'
 import { CalendarHeader } from './CalendarHeader'
 import { MonthView } from './MonthView'

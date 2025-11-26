@@ -32,6 +32,8 @@ import { useToast } from '@/hooks/use-toast'
 import { studentService } from '@/services/studentService'
 import { Student } from '@/types'
 import { Link } from 'react-router-dom'
+import { PageTransition } from '@/components/PageTransition'
+import { TableSkeleton } from '@/components/skeletons'
 
 export default function Students() {
   const [students, setStudents] = useState<Student[]>([])
@@ -67,6 +69,13 @@ export default function Students() {
   )
 
   const handleCreate = async () => {
+    if (!newStudent.name || !newStudent.email) {
+      toast({
+        variant: 'destructive',
+        title: 'Preencha os campos obrigatórios',
+      })
+      return
+    }
     try {
       await studentService.create({
         ...newStudent,
@@ -96,12 +105,12 @@ export default function Students() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageTransition className="space-y-8">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Alunos</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="shadow-sm hover:shadow-md transition-all">
               <Plus className="mr-2 h-4 w-4" /> Adicionar Aluno
             </Button>
           </DialogTrigger>
@@ -180,37 +189,36 @@ export default function Students() {
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar alunos..."
-            className="pl-8"
+            className="pl-8 transition-all focus:w-full"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="rounded-md border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[80px]">Avatar</TableHead>
-              <TableHead>Nome</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Nível</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+      {isLoading ? (
+        <TableSkeleton columns={6} rows={5} />
+      ) : (
+        <div className="rounded-md border bg-card shadow-sm">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  Carregando...
-                </TableCell>
+                <TableHead className="w-[80px]">Avatar</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Nível</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
-            ) : (
-              filteredStudents.map((student) => (
-                <TableRow key={student.id}>
+            </TableHeader>
+            <TableBody>
+              {filteredStudents.map((student) => (
+                <TableRow
+                  key={student.id}
+                  className="group hover:bg-muted/50 transition-colors"
+                >
                   <TableCell>
-                    <Avatar>
+                    <Avatar className="transition-transform group-hover:scale-110">
                       <AvatarImage src={student.avatar} />
                       <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
                     </Avatar>
@@ -218,7 +226,7 @@ export default function Students() {
                   <TableCell className="font-medium">
                     <Link
                       to={`/students/${student.id}`}
-                      className="hover:underline"
+                      className="hover:text-primary transition-colors"
                     >
                       {student.name}
                     </Link>
@@ -239,22 +247,25 @@ export default function Students() {
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
+                        <Button
+                          variant="ghost"
+                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
                           <span className="sr-only">Abrir menu</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
+                        <DropdownMenuItem asChild className="cursor-pointer">
                           <Link to={`/students/${student.id}`}>
                             <Eye className="mr-2 h-4 w-4" /> Detalhes
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer">
                           <Edit className="mr-2 h-4 w-4" /> Editar
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="text-destructive"
+                          className="text-destructive cursor-pointer focus:text-destructive"
                           onClick={() => handleDelete(student.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" /> Excluir
@@ -263,11 +274,11 @@ export default function Students() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </PageTransition>
   )
 }

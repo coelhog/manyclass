@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ArrowLeft, Mail, Phone, Calendar, BookOpen } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageTransition } from '@/components/PageTransition'
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>()
@@ -40,10 +41,16 @@ export default function StudentDetail() {
 
   if (isLoading) {
     return (
-      <div className="p-8 space-y-4">
-        <Skeleton className="h-12 w-1/3" />
-        <Skeleton className="h-64 w-full" />
-      </div>
+      <PageTransition className="p-8 space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10 rounded-md" />
+          <Skeleton className="h-10 w-64" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-3">
+          <Skeleton className="h-[300px] rounded-xl" />
+          <Skeleton className="h-[300px] md:col-span-2 rounded-xl" />
+        </div>
+      </PageTransition>
     )
   }
 
@@ -52,9 +59,14 @@ export default function StudentDetail() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageTransition className="space-y-8">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          asChild
+          className="hover:bg-muted/50"
+        >
           <Link to="/students">
             <ArrowLeft className="h-5 w-5" />
           </Link>
@@ -63,15 +75,15 @@ export default function StudentDetail() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-1">
+        <Card className="md:col-span-1 h-fit">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <Avatar className="h-32 w-32">
+              <Avatar className="h-32 w-32 ring-4 ring-background shadow-md">
                 <AvatarImage src={student.avatar} />
                 <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
               </Avatar>
             </div>
-            <CardTitle>{student.name}</CardTitle>
+            <CardTitle className="text-xl">{student.name}</CardTitle>
             <div className="flex justify-center gap-2 mt-2">
               <Badge>{student.level}</Badge>
               <Badge
@@ -82,15 +94,15 @@ export default function StudentDetail() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 text-sm">
+            <div className="flex items-center gap-3 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors">
               <Mail className="h-4 w-4 text-muted-foreground" />
               <span>{student.email}</span>
             </div>
-            <div className="flex items-center gap-3 text-sm">
+            <div className="flex items-center gap-3 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors">
               <Phone className="h-4 w-4 text-muted-foreground" />
               <span>{student.phone}</span>
             </div>
-            <div className="flex items-center gap-3 text-sm">
+            <div className="flex items-center gap-3 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <span>
                 Desde {new Date(student.joinedAt).toLocaleDateString('pt-BR')}
@@ -101,15 +113,21 @@ export default function StudentDetail() {
 
         <div className="md:col-span-2">
           <Tabs defaultValue="classes">
-            <TabsList>
+            <TabsList className="w-full justify-start">
               <TabsTrigger value="classes">Turmas</TabsTrigger>
               <TabsTrigger value="tasks">Tarefas</TabsTrigger>
               <TabsTrigger value="history">Histórico</TabsTrigger>
             </TabsList>
-            <TabsContent value="classes" className="space-y-4 mt-4">
+            <TabsContent
+              value="classes"
+              className="space-y-4 mt-4 animate-in fade-in slide-in-from-bottom-2 duration-300"
+            >
               {classes.length > 0 ? (
                 classes.map((cls) => (
-                  <Card key={cls.id}>
+                  <Card
+                    key={cls.id}
+                    className="hover:shadow-md transition-shadow"
+                  >
                     <CardContent className="flex items-center justify-between p-4">
                       <div className="flex items-center gap-4">
                         <div className="bg-primary/10 p-2 rounded-full">
@@ -145,6 +163,6 @@ export default function StudentDetail() {
           </Tabs>
         </div>
       </div>
-    </div>
+    </PageTransition>
   )
 }

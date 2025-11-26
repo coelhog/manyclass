@@ -10,14 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import {
-  Plus,
-  Search,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  FileText,
-} from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { taskService } from '@/services/taskService'
 import { classService } from '@/services/classService'
 import { Task, ClassGroup } from '@/types'
@@ -41,12 +34,15 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
+import { PageTransition } from '@/components/PageTransition'
+import { TableSkeleton } from '@/components/skeletons'
 
 export default function Tasks() {
   const { user } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
   const [classes, setClasses] = useState<ClassGroup[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [newTask, setNewTask] = useState<Partial<Task>>({ type: 'text' })
   const { toast } = useToast()
 
@@ -55,12 +51,17 @@ export default function Tasks() {
   }, [])
 
   const loadData = async () => {
-    const [t, c] = await Promise.all([
-      taskService.getAllTasks(),
-      classService.getAllClasses(),
-    ])
-    setTasks(t)
-    setClasses(c)
+    setIsLoading(true)
+    try {
+      const [t, c] = await Promise.all([
+        taskService.getAllTasks(),
+        classService.getAllClasses(),
+      ])
+      setTasks(t)
+      setClasses(c)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleCreate = async () => {
@@ -91,20 +92,22 @@ export default function Tasks() {
 
   const getStatusBadge = (status: string) => {
     return status === 'open' ? (
-      <Badge className="bg-green-100 text-green-800">Aberta</Badge>
+      <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+        Aberta
+      </Badge>
     ) : (
       <Badge variant="secondary">Fechada</Badge>
     )
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageTransition className="space-y-8">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Tarefas</h1>
         {user?.role === 'teacher' && (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="shadow-sm hover:shadow-md transition-all">
                 <Plus className="mr-2 h-4 w-4" /> Criar Tarefa
               </Button>
             </DialogTrigger>
@@ -195,40 +198,52 @@ export default function Tasks() {
         )}
       </div>
 
-      <div className="rounded-md border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Título</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Data de Entrega</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tasks.map((task) => (
-              <TableRow key={task.id}>
-                <TableCell className="font-medium">{task.title}</TableCell>
-                <TableCell>
-                  <Badge variant="outline">{task.type}</Badge>
-                </TableCell>
-                <TableCell>
-                  {new Date(task.dueDate).toLocaleDateString('pt-BR')}
-                </TableCell>
-                <TableCell>{getStatusBadge(task.status)}</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to={`/tasks/${task.id}`}>
-                      {user?.role === 'teacher' ? 'Gerenciar' : 'Ver Tarefa'}
-                    </Link>
-                  </Button>
-                </TableCell>
+      {isLoading ? (
+        <TableSkeleton columns={5} rows={5} />
+      ) : (
+        <div className="rounded-md border bg-card shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Título</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Data de Entrega</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+            </TableHeader>
+            <TableBody>
+              {tasks.map((task) => (
+                <TableRow
+                  key={task.id}
+                  className="group hover:bg-muted/50 transition-colors"
+                >
+                  <TableCell className="font-medium">{task.title}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{task.type}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {new Date(task.dueDate).toLocaleDateString('pt-BR')}
+                  </TableCell>
+                  <TableCell>{getStatusBadge(task.status)}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      asChild
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Link to={`/tasks/${task.id}`}>
+                        {user?.role === 'teacher' ? 'Gerenciar' : 'Ver Tarefa'}
+                      </Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </PageTransition>
   )
 }

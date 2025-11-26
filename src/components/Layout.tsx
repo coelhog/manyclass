@@ -4,7 +4,7 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Search, Bell, User as UserIcon } from 'lucide-react'
+import { Search, Bell, User as UserIcon, Loader2 } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,19 +68,19 @@ export default function Layout() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background p-4">
-        <Card className="w-full max-w-md shadow-lg">
+      <div className="flex items-center justify-center min-h-screen bg-background p-4 animate-in fade-in duration-500">
+        <Card className="w-full max-w-md shadow-lg border-t-4 border-t-primary">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
               <div className="bg-primary/20 p-3 rounded-full">
-                <div className="bg-primary text-primary-foreground p-2 rounded-md">
+                <div className="bg-primary text-primary-foreground p-2 rounded-md shadow-sm">
                   <Search className="w-6 h-6" />
                 </div>
               </div>
@@ -99,12 +99,17 @@ export default function Layout() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="focus-visible:ring-primary"
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Senha</Label>
-                  <Button variant="link" className="px-0 font-normal text-xs">
+                  <Button
+                    variant="link"
+                    className="px-0 font-normal text-xs"
+                    type="button"
+                  >
                     Esqueceu sua senha?
                   </Button>
                 </div>
@@ -114,10 +119,19 @@ export default function Layout() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="focus-visible:ring-primary"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isLoggingIn}>
-                {isLoggingIn ? 'Entrando...' : 'Entrar como Professor'}
+              <Button
+                type="submit"
+                className="w-full transition-all hover:scale-[1.02]"
+                disabled={isLoggingIn}
+              >
+                {isLoggingIn ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  'Entrar como Professor'
+                )}
               </Button>
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -132,7 +146,7 @@ export default function Layout() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full transition-all hover:bg-secondary/50"
                 onClick={handleStudentLogin}
                 disabled={isLoggingIn}
               >
@@ -149,25 +163,32 @@ export default function Layout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-background/50">
-        <header className="h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-between px-4 sticky top-0 z-10">
+      <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-background/50 transition-all duration-300 ease-in-out">
+        <header className="h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-between px-4 sticky top-0 z-10 shadow-sm">
           <div className="flex items-center gap-4">
             <SidebarTrigger />
-            <div className="hidden md:flex relative w-64">
+            <div className="hidden md:flex relative w-64 transition-all focus-within:w-80">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar..." className="pl-8 h-9" />
+              <Input
+                placeholder="Buscar..."
+                className="pl-8 h-9 bg-muted/50 focus:bg-background transition-colors"
+              />
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative hover:bg-muted/50 rounded-full"
+            >
               <Bell className="h-5 w-5" />
-              <span className="absolute top-2 right-2 h-2 w-2 bg-destructive rounded-full" />
+              <span className="absolute top-2 right-2 h-2 w-2 bg-destructive rounded-full animate-pulse" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="relative h-8 w-8 rounded-full"
+                  className="relative h-8 w-8 rounded-full ring-2 ring-transparent hover:ring-primary/20 transition-all"
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user.avatar} alt={user.name} />
@@ -190,17 +211,24 @@ export default function Layout() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Meu Perfil</DropdownMenuItem>
-                <DropdownMenuItem>Configurações</DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer">
+                  Meu Perfil
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer">
+                  Configurações
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => window.location.reload()}>
+                <DropdownMenuItem
+                  onClick={() => window.location.reload()}
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                >
                   Sair
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </header>
-        <div className="flex-1 overflow-auto p-4 md:p-8">
+        <div className="flex-1 overflow-auto p-4 md:p-8 scroll-smooth">
           <Outlet />
         </div>
       </main>

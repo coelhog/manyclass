@@ -25,6 +25,8 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
+import { PageTransition } from '@/components/PageTransition'
+import { CardGridSkeleton } from '@/components/skeletons'
 
 export default function Classes() {
   const [classes, setClasses] = useState<ClassGroup[]>([])
@@ -48,6 +50,10 @@ export default function Classes() {
   }
 
   const handleCreate = async () => {
+    if (!newClass.name) {
+      toast({ variant: 'destructive', title: 'Nome da turma é obrigatório' })
+      return
+    }
     try {
       await classService.createClass({
         ...newClass,
@@ -64,12 +70,12 @@ export default function Classes() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageTransition className="space-y-8">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Turmas</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="shadow-sm hover:shadow-md transition-all">
               <Plus className="mr-2 h-4 w-4" /> Criar Turma
             </Button>
           </DialogTrigger>
@@ -123,16 +129,28 @@ export default function Classes() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {isLoading ? (
-          <p>Carregando...</p>
-        ) : (
-          classes.map((cls) => (
-            <Card key={cls.id} className="hover:shadow-lg transition-shadow">
+      {isLoading ? (
+        <CardGridSkeleton count={3} />
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {classes.map((cls) => (
+            <Card
+              key={cls.id}
+              className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+            >
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-xl">{cls.name}</CardTitle>
-                  <Badge variant="outline">{cls.status}</Badge>
+                  <Badge
+                    variant="outline"
+                    className={
+                      cls.status === 'active'
+                        ? 'bg-green-50 text-green-700 border-green-200'
+                        : ''
+                    }
+                  >
+                    {cls.status}
+                  </Badge>
                 </div>
                 <CardDescription>ID: {cls.id}</CardDescription>
               </CardHeader>
@@ -148,18 +166,18 @@ export default function Classes() {
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-between">
-                <Button variant="outline" asChild>
+              <CardFooter className="flex justify-between gap-2">
+                <Button variant="outline" className="flex-1" asChild>
                   <Link to={`/classes/${cls.id}`}>Ver Detalhes</Link>
                 </Button>
-                <Button asChild>
+                <Button className="flex-1" asChild>
                   <Link to={`/classes/${cls.id}`}>Gerenciar</Link>
                 </Button>
               </CardFooter>
             </Card>
-          ))
-        )}
-      </div>
-    </div>
+          ))}
+        </div>
+      )}
+    </PageTransition>
   )
 }
