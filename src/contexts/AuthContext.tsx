@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { mockUser } from '@/lib/mock-data'
-
-type User = typeof mockUser
+import { mockUser, mockStudentUser } from '@/lib/mock-data'
+import { User } from '@/types'
 
 interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<void>
+  loginAsStudent: () => Promise<void>
   logout: () => void
   isLoading: boolean
 }
@@ -17,7 +17,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate checking local storage
     const storedUser = localStorage.getItem('smartclass_user')
     if (storedUser) {
       setUser(JSON.parse(storedUser))
@@ -26,7 +25,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const login = async (email: string, password: string) => {
-    // Simulate API call
     return new Promise<void>((resolve, reject) => {
       setTimeout(() => {
         if (email && password) {
@@ -41,13 +39,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
   }
 
+  const loginAsStudent = async () => {
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        setUser(mockStudentUser)
+        localStorage.setItem('smartclass_user', JSON.stringify(mockStudentUser))
+        resolve()
+      }, 500)
+    })
+  }
+
   const logout = () => {
     setUser(null)
     localStorage.removeItem('smartclass_user')
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider
+      value={{ user, login, loginAsStudent, logout, isLoading }}
+    >
       {children}
     </AuthContext.Provider>
   )

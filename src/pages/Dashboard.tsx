@@ -1,3 +1,5 @@
+import { useAuth } from '@/contexts/AuthContext'
+import StudentDashboard from './StudentDashboard'
 import {
   Card,
   CardContent,
@@ -5,15 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { useAuth } from '@/contexts/AuthContext'
-import { mockClasses, mockTasks } from '@/lib/mock-data'
-import {
-  BookOpen,
-  Calendar,
-  CheckCircle,
-  DollarSign,
-  Users,
-} from 'lucide-react'
+import { mockClasses } from '@/lib/mock-data'
+import { BookOpen, CheckCircle, DollarSign, Users } from 'lucide-react'
 import {
   ChartContainer,
   ChartTooltip,
@@ -39,6 +34,10 @@ const chartConfig = {
 
 export default function Dashboard() {
   const { user } = useAuth()
+
+  if (user?.role === 'student') {
+    return <StudentDashboard />
+  }
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -147,7 +146,7 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <div className="ml-auto font-medium text-sm text-muted-foreground">
-                    {cls.students} alunos
+                    {cls.studentIds.length} alunos
                   </div>
                 </div>
               ))}

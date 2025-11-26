@@ -1,12 +1,22 @@
-export const mockUser = {
+import { User, Student, ClassGroup, Task, TaskSubmission } from '@/types'
+
+export const mockUser: User = {
   id: '1',
   name: 'Ana Silva',
   email: 'ana.silva@smartclass.com',
-  role: 'teacher', // 'teacher', 'student', 'admin'
+  role: 'teacher',
   avatar: 'https://img.usecurling.com/ppl/medium?gender=female',
 }
 
-export const mockStudents = [
+export const mockStudentUser: User = {
+  id: '2',
+  name: 'João Pedro',
+  email: 'joao@email.com',
+  role: 'student',
+  avatar: 'https://img.usecurling.com/ppl/medium?gender=male&seed=1',
+}
+
+export const mockStudents: Student[] = [
   {
     id: '1',
     name: 'João Pedro',
@@ -14,6 +24,8 @@ export const mockStudents = [
     phone: '(11) 99999-9999',
     status: 'active',
     avatar: 'https://img.usecurling.com/ppl/thumbnail?gender=male&seed=1',
+    level: 'B1',
+    joinedAt: '2024-01-15',
   },
   {
     id: '2',
@@ -22,6 +34,8 @@ export const mockStudents = [
     phone: '(11) 88888-8888',
     status: 'active',
     avatar: 'https://img.usecurling.com/ppl/thumbnail?gender=female&seed=2',
+    level: 'A2',
+    joinedAt: '2024-02-10',
   },
   {
     id: '3',
@@ -30,80 +44,86 @@ export const mockStudents = [
     phone: '(11) 77777-7777',
     status: 'inactive',
     avatar: 'https://img.usecurling.com/ppl/thumbnail?gender=male&seed=3',
+    level: 'C1',
+    joinedAt: '2023-11-05',
   },
 ]
 
-export const mockClasses = [
+export const mockClasses: ClassGroup[] = [
   {
     id: '1',
     name: 'Inglês Iniciante A1',
-    students: 12,
     schedule: 'Seg/Qua 19:00',
     status: 'active',
+    studentIds: ['1', '2'],
   },
   {
     id: '2',
     name: 'Espanhol Intermediário B1',
-    students: 8,
     schedule: 'Ter/Qui 18:00',
     status: 'active',
+    studentIds: ['2'],
   },
   {
     id: '3',
     name: 'Francês Avançado C1',
-    students: 5,
     schedule: 'Sáb 10:00',
     status: 'active',
+    studentIds: ['3'],
   },
 ]
 
-export const mockTasks = [
+export const mockTasks: Task[] = [
   {
     id: '1',
     title: 'Workbook Unit 5',
-    class: 'Inglês Iniciante A1',
-    dueDate: '2024-05-20',
-    status: 'pending',
+    description: 'Complete os exercícios da página 45.',
+    type: 'text',
+    classId: '1',
+    dueDate: '2024-05-20T23:59:00Z',
+    status: 'open',
   },
   {
     id: '2',
     title: 'Redação: Minhas Férias',
-    class: 'Espanhol Intermediário B1',
-    dueDate: '2024-05-22',
-    status: 'completed',
+    description: 'Escreva um texto de 200 palavras sobre suas últimas férias.',
+    type: 'file-upload',
+    classId: '2',
+    dueDate: '2024-05-22T23:59:00Z',
+    status: 'open',
   },
   {
     id: '3',
-    title: 'Exercícios de Gramática',
-    class: 'Francês Avançado C1',
-    dueDate: '2024-05-18',
-    status: 'overdue',
+    title: 'Quiz de Gramática',
+    description: 'Selecione a alternativa correta.',
+    type: 'multiple-choice',
+    classId: '1',
+    dueDate: '2024-05-18T23:59:00Z',
+    status: 'closed',
+    options: [
+      { id: 'opt1', text: 'I have been' },
+      { id: 'opt2', text: 'I has been' },
+      { id: 'opt3', text: 'I am been' },
+    ],
   },
 ]
 
-export const mockPayments = [
+export const mockSubmissions: TaskSubmission[] = [
   {
-    id: '1',
-    student: 'João Pedro',
-    description: 'Mensalidade Maio',
-    amount: 250.0,
-    dueDate: '2024-05-10',
-    status: 'paid',
-  },
-  {
-    id: '2',
-    student: 'Maria Clara',
-    description: 'Mensalidade Maio',
-    amount: 250.0,
-    dueDate: '2024-05-10',
+    id: 'sub1',
+    taskId: '1',
+    studentId: '1',
+    content: 'Respostas dos exercícios...',
+    submittedAt: '2024-05-19T14:30:00Z',
     status: 'pending',
   },
   {
-    id: '3',
-    student: 'Carlos Eduardo',
-    description: 'Material Didático',
-    amount: 150.0,
-    dueDate: '2024-05-05',
-    status: 'overdue',
+    id: 'sub2',
+    taskId: '3',
+    studentId: '1',
+    selectedOptionId: 'opt1',
+    submittedAt: '2024-05-18T10:00:00Z',
+    grade: 10,
+    status: 'graded',
   },
 ]

@@ -4,7 +4,7 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Search, Bell } from 'lucide-react'
+import { Search, Bell, User as UserIcon } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +26,7 @@ import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
 
 export default function Layout() {
-  const { user, login, isLoading } = useAuth()
+  const { user, login, loginAsStudent, isLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoggingIn, setIsLoggingIn] = useState(false)
@@ -46,6 +46,19 @@ export default function Layout() {
         variant: 'destructive',
         title: 'Erro ao fazer login',
         description: 'Verifique suas credenciais e tente novamente.',
+      })
+    } finally {
+      setIsLoggingIn(false)
+    }
+  }
+
+  const handleStudentLogin = async () => {
+    setIsLoggingIn(true)
+    try {
+      await loginAsStudent()
+      toast({
+        title: 'Login como Aluno',
+        description: 'Bem-vindo ao SmartClassHub.',
       })
     } finally {
       setIsLoggingIn(false)
@@ -104,14 +117,28 @@ export default function Layout() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={isLoggingIn}>
-                {isLoggingIn ? 'Entrando...' : 'Entrar'}
+                {isLoggingIn ? 'Entrando...' : 'Entrar como Professor'}
               </Button>
-              <div className="text-center text-sm text-muted-foreground mt-4">
-                Não tem uma conta?{' '}
-                <Button variant="link" className="p-0 h-auto font-normal">
-                  Criar conta
-                </Button>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Ou
+                  </span>
+                </div>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleStudentLogin}
+                disabled={isLoggingIn}
+              >
+                <UserIcon className="mr-2 h-4 w-4" />
+                Entrar como Aluno (Demo)
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -156,6 +183,9 @@ export default function Layout() {
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
                       {user.email}
+                    </p>
+                    <p className="text-xs font-semibold text-primary capitalize">
+                      {user.role === 'teacher' ? 'Professor' : 'Aluno'}
                     </p>
                   </div>
                 </DropdownMenuLabel>

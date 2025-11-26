@@ -7,9 +7,12 @@ import { ThemeProvider } from '@/components/theme-provider'
 import Layout from './components/Layout'
 import Index from './pages/Index'
 import Students from './pages/Students'
+import StudentDetail from './pages/StudentDetail'
 import Classes from './pages/Classes'
+import ClassDetail from './pages/ClassDetail'
 import CalendarPage from './pages/Calendar'
 import Tasks from './pages/Tasks'
+import TaskDetail from './pages/TaskDetail'
 import Materials from './pages/Materials'
 import Payments from './pages/Payments'
 import Settings from './pages/Settings'
@@ -28,9 +31,12 @@ const App = () => (
             <Route element={<Layout />}>
               <Route path="/" element={<Index />} />
               <Route path="/students" element={<Students />} />
+              <Route path="/students/:id" element={<StudentDetail />} />
               <Route path="/classes" element={<Classes />} />
+              <Route path="/classes/:id" element={<ClassDetail />} />
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/tasks" element={<Tasks />} />
+              <Route path="/tasks/:id" element={<TaskDetail />} />
               <Route path="/materials" element={<Materials />} />
               <Route path="/payments" element={<Payments />} />
               <Route path="/settings" element={<Settings />} />

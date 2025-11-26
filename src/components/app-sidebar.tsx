@@ -9,6 +9,7 @@ import {
   BookOpen,
   LogOut,
   CheckSquare,
+  FileText,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import {
@@ -29,53 +30,32 @@ import { ModeToggle } from '@/components/mode-toggle'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
-const items = [
-  {
-    title: 'Dashboard',
-    url: '/',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Alunos',
-    url: '/students',
-    icon: Users,
-  },
-  {
-    title: 'Turmas',
-    url: '/classes',
-    icon: GraduationCap,
-  },
-  {
-    title: 'Calendário',
-    url: '/calendar',
-    icon: Calendar,
-  },
-  {
-    title: 'Tarefas',
-    url: '/tasks',
-    icon: CheckSquare,
-  },
-  {
-    title: 'Materiais',
-    url: '/materials',
-    icon: BookOpen,
-  },
-  {
-    title: 'Pagamentos',
-    url: '/payments',
-    icon: Wallet,
-  },
-  {
-    title: 'Configurações',
-    url: '/settings',
-    icon: Settings,
-  },
-]
-
 export function AppSidebar() {
   const { pathname } = useLocation()
   const { logout, user } = useAuth()
   const { state } = useSidebar()
+
+  const teacherItems = [
+    { title: 'Dashboard', url: '/', icon: LayoutDashboard },
+    { title: 'Alunos', url: '/students', icon: Users },
+    { title: 'Turmas', url: '/classes', icon: GraduationCap },
+    { title: 'Calendário', url: '/calendar', icon: Calendar },
+    { title: 'Tarefas', url: '/tasks', icon: CheckSquare },
+    { title: 'Materiais', url: '/materials', icon: BookOpen },
+    { title: 'Pagamentos', url: '/payments', icon: Wallet },
+    { title: 'Configurações', url: '/settings', icon: Settings },
+  ]
+
+  const studentItems = [
+    { title: 'Área do Aluno', url: '/', icon: Home },
+    { title: 'Minhas Turmas', url: '/classes', icon: GraduationCap },
+    { title: 'Minhas Tarefas', url: '/tasks', icon: CheckSquare },
+    { title: 'Calendário', url: '/calendar', icon: Calendar },
+    { title: 'Materiais', url: '/materials', icon: BookOpen },
+    { title: 'Configurações', url: '/settings', icon: Settings },
+  ]
+
+  const items = user?.role === 'student' ? studentItems : teacherItems
 
   return (
     <Sidebar collapsible="icon">
