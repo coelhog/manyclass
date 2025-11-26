@@ -60,7 +60,20 @@ export default function Classes() {
     setIsLoading(true)
     try {
       const data = await classService.getAllClasses()
-      setClasses(data)
+      if (Array.isArray(data)) {
+        setClasses(data)
+      } else {
+        setClasses([])
+        console.error('Invalid classes data received', data)
+      }
+    } catch (error) {
+      console.error('Failed to load classes', error)
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao carregar turmas',
+        description: 'Por favor, tente recarregar a página.',
+      })
+      setClasses([])
     } finally {
       setIsLoading(false)
     }
@@ -245,6 +258,11 @@ export default function Classes() {
               </CardFooter>
             </Card>
           ))}
+          {classes.length === 0 && (
+            <div className="col-span-full text-center py-10 text-muted-foreground">
+              Nenhuma turma encontrada.
+            </div>
+          )}
         </div>
       )}
     </PageTransition>

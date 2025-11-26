@@ -27,13 +27,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { MultiSelect } from '@/components/ui/multi-select'
 
 export default function Payments() {
   const [payments, setPayments] = useState<Payment[]>([])
@@ -41,7 +35,7 @@ export default function Payments() {
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newPayment, setNewPayment] = useState({
-    studentId: '',
+    studentIds: [] as string[],
     description: '',
     amount: 0,
     dueDate: '',
@@ -67,7 +61,7 @@ export default function Payments() {
   }
 
   const handleCreate = async () => {
-    if (!newPayment.studentId || !newPayment.amount) {
+    if (newPayment.studentIds.length === 0 || !newPayment.amount) {
       toast({
         variant: 'destructive',
         title: 'Preencha os campos obrigatórios',
@@ -75,21 +69,37 @@ export default function Payments() {
       return
     }
     try {
-      const student = students.find((s) => s.id === newPayment.studentId)
-      await studentService.createPayment({
-        ...newPayment,
-        student: student?.name || 'Unknown',
-        status: 'pending',
-        dueDate: newPayment.dueDate || new Date().toISOString(),
-      })
-      toast({ title: 'Pagamento registrado com sucesso!' })
+      // Create a payment for each selected student
+      for (const studentId of newPayment.studentIds) {
+        const student = students.find((s) => s.id === studentId)
+        await studentService.createPayment({
+          studentId: studentId,
+          student: student?.name || 'Unknown',
+          description: newPayment.description,
+          amount: newPayment.amount,
+          status: 'pending',
+          dueDate: newPayment.dueDate || new Date().toISOString(),
+        })
+      }
+
+      toast({ title: 'Pagamentos registrados com sucesso!' })
       setIsDialogOpen(false)
       loadData()
-      setNewPayment({ studentId: '', description: '', amount: 0, dueDate: '' })
+      setNewPayment({
+        studentIds: [],
+        description: '',
+        amount: 0,
+        dueDate: '',
+      })
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao registrar pagamento' })
     }
   }
+
+  const studentOptions = students.map((s) => ({
+    label: s.name,
+    value: s.id,
+  }))
 
   return (
     <PageTransition className="space-y-8">
@@ -105,32 +115,23 @@ export default function Payments() {
             <DialogHeader>
               <DialogTitle>Novo Pagamento</DialogTitle>
               <DialogDescription>
-                Registre um novo pagamento manual para um aluno.
+                Registre um novo pagamento manual para um ou mais alunos.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="student" className="text-right">
-                  Aluno
+                  Alunos
                 </Label>
                 <div className="col-span-3">
-                  <Select
-                    value={newPayment.studentId}
-                    onValueChange={(v) =>
-                      setNewPayment({ ...newPayment, studentId: v })
+                  <MultiSelect
+                    options={studentOptions}
+                    selected={newPayment.studentIds}
+                    onChange={(selected) =>
+                      setNewPayment({ ...newPayment, studentIds: selected })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o aluno" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {students.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Selecione os alunos"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">

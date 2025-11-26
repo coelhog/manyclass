@@ -10,8 +10,15 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 export const studentService = {
   getAll: async (): Promise<Student[]> => {
     await delay(500)
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) return JSON.parse(stored)
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        return Array.isArray(parsed) ? parsed : mockStudents
+      }
+    } catch (e) {
+      console.error('Error loading students', e)
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(mockStudents))
     return mockStudents
   },
@@ -70,11 +77,15 @@ export const studentService = {
     studentId: string,
   ): Promise<Subscription | undefined> => {
     await delay(300)
-    const stored = localStorage.getItem(SUBSCRIPTIONS_KEY)
-    const subscriptions: Subscription[] = stored
-      ? JSON.parse(stored)
-      : mockSubscriptions
-    return subscriptions.find((s) => s.studentId === studentId)
+    try {
+      const stored = localStorage.getItem(SUBSCRIPTIONS_KEY)
+      const subscriptions: Subscription[] = stored
+        ? JSON.parse(stored)
+        : mockSubscriptions
+      return subscriptions.find((s) => s.studentId === studentId)
+    } catch (e) {
+      return undefined
+    }
   },
 
   createSubscription: async (
@@ -93,8 +104,12 @@ export const studentService = {
   // Payments
   getAllPayments: async (): Promise<Payment[]> => {
     await delay(300)
-    const stored = localStorage.getItem(PAYMENTS_KEY)
-    if (stored) return JSON.parse(stored)
+    try {
+      const stored = localStorage.getItem(PAYMENTS_KEY)
+      if (stored) return JSON.parse(stored)
+    } catch (e) {
+      console.error('Error loading payments', e)
+    }
     localStorage.setItem(PAYMENTS_KEY, JSON.stringify(mockPayments))
     return mockPayments
   },

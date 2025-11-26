@@ -3,7 +3,6 @@ import {
   CalendarEvent,
   CreateEventDTO,
   UpdateEventDTO,
-  Subscription,
 } from '@/types'
 import { mockClasses } from '@/lib/mock-data'
 import { studentService } from './studentService'
@@ -17,8 +16,15 @@ export const classService = {
   // Classes Management
   getAllClasses: async (): Promise<ClassGroup[]> => {
     await delay(500)
-    const stored = localStorage.getItem(CLASSES_KEY)
-    if (stored) return JSON.parse(stored)
+    try {
+      const stored = localStorage.getItem(CLASSES_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        return Array.isArray(parsed) ? parsed : mockClasses
+      }
+    } catch (e) {
+      console.error('Error loading classes', e)
+    }
     localStorage.setItem(CLASSES_KEY, JSON.stringify(mockClasses))
     return mockClasses
   },
@@ -37,11 +43,8 @@ export const classService = {
 
     // Auto-generate subscriptions logic
     if (newClass.billingModel === 'per_class') {
-      // Create a subscription for the class itself or link students
-      // For simplicity, we just log it here, but in a real app we would create records
       console.log('Generated class subscription for', newClass.name)
     } else if (newClass.billingModel === 'per_student') {
-      // If students were added during creation, generate subs
       if (newClass.studentIds.length > 0) {
         for (const studentId of newClass.studentIds) {
           await studentService.createSubscription({
@@ -98,11 +101,15 @@ export const classService = {
     return updated
   },
 
-  // Events Management (Existing)
+  // Events Management
   getEvents: async (): Promise<CalendarEvent[]> => {
     await delay(300)
-    const stored = localStorage.getItem(EVENTS_KEY)
-    if (stored) return JSON.parse(stored)
+    try {
+      const stored = localStorage.getItem(EVENTS_KEY)
+      if (stored) return JSON.parse(stored)
+    } catch (e) {
+      console.error('Error loading events', e)
+    }
     return []
   },
 
