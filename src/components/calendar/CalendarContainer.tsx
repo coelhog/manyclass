@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   addMonths,
   subMonths,
@@ -35,18 +35,7 @@ export function CalendarContainer() {
 
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadEvents()
-  }, [])
-
-  useEffect(() => {
-    const filtered = events.filter((event) =>
-      event.title.toLowerCase().includes(searchTerm.toLowerCase()),
-    )
-    setFilteredEvents(filtered)
-  }, [searchTerm, events])
-
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     setIsLoading(true)
     try {
       const data = await classService.getEvents()
@@ -61,7 +50,18 @@ export function CalendarContainer() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    loadEvents()
+  }, [loadEvents])
+
+  useEffect(() => {
+    const filtered = events.filter((event) =>
+      event.title.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+    setFilteredEvents(filtered)
+  }, [searchTerm, events])
 
   const handlePrev = () => {
     if (view === 'month') {
