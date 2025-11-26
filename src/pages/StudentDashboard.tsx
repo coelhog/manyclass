@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { taskService } from '@/services/taskService'
-import { Task } from '@/types'
+import { studentService } from '@/services/studentService'
+import { Task, Subscription } from '@/types'
 import {
   Card,
   CardContent,
@@ -13,28 +14,37 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar, CheckCircle2, Clock, ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { format } from 'date-fns'
+import { format, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { PageTransition } from '@/components/PageTransition'
 import { DashboardSkeleton } from '@/components/skeletons'
+import { SubscriptionAlert } from '@/components/SubscriptionAlert'
 
 export default function StudentDashboard() {
   const { user } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
+  const [subscription, setSubscription] = useState<Subscription | undefined>(
+    undefined,
+  )
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const loadData = async () => {
+      if (!user) return
       setIsLoading(true)
       try {
-        const allTasks = await taskService.getAllTasks()
+        const [allTasks, sub] = await Promise.all([
+          taskService.getAllTasks(),
+          studentService.getSubscriptionByStudentId(user.id),
+        ])
         setTasks(allTasks)
+        setSubscription(sub)
       } finally {
         setIsLoading(false)
       }
     }
     loadData()
-  }, [])
+  }, [user])
 
   const pendingTasks = tasks.filter((t) => t.status === 'open').slice(0, 3)
 
@@ -46,6 +56,10 @@ export default function StudentDashboard() {
     )
   }
 
+  const daysRemaining = subscription
+    ? differenceInDays(new Date(subscription.nextBillingDate), new Date())
+    : undefined
+
   return (
     <PageTransition className="space-y-8">
       <div className="flex items-center justify-between">
@@ -55,12 +69,19 @@ export default function StudentDashboard() {
             Bem-vindo de volta, {user?.name}!
           </p>
         </div>
-        <div className="text-right">
+        <div className="text-right hidden md:block">
           <p className="text-sm font-medium">
             {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
           </p>
         </div>
       </div>
+
+      {subscription && (
+        <SubscriptionAlert
+          status={subscription.status}
+          daysRemaining={daysRemaining}
+        />
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="bg-primary/10 border-primary/20 hover:bg-primary/15 transition-colors">

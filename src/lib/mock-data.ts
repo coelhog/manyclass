@@ -5,6 +5,7 @@ import {
   Task,
   TaskSubmission,
   Payment,
+  Subscription,
 } from '@/types'
 
 export const mockUser: User = {
@@ -13,6 +14,7 @@ export const mockUser: User = {
   email: 'ana.silva@smartclass.com',
   role: 'teacher',
   avatar: 'https://img.usecurling.com/ppl/medium?gender=female',
+  plan_id: 'premium',
 }
 
 export const mockStudentUser: User = {
@@ -22,6 +24,35 @@ export const mockStudentUser: User = {
   role: 'student',
   avatar: 'https://img.usecurling.com/ppl/medium?gender=male&seed=1',
 }
+
+export const mockAdminUser: User = {
+  id: 'admin1',
+  name: 'Administrador',
+  email: 'admin@smartclass.com',
+  role: 'admin',
+  avatar: 'https://img.usecurling.com/i?q=shield&color=blue',
+}
+
+export const mockSubscriptions: Subscription[] = [
+  {
+    id: 'sub1',
+    studentId: '2', // João Pedro
+    plan: 'student_monthly',
+    status: 'active',
+    startDate: '2024-01-01',
+    nextBillingDate: '2024-06-01',
+    amount: 350.0,
+  },
+  {
+    id: 'sub2',
+    studentId: '3', // Carlos Eduardo
+    plan: 'student_monthly',
+    status: 'past_due',
+    startDate: '2023-11-01',
+    nextBillingDate: '2024-05-01',
+    amount: 350.0,
+  },
+]
 
 export const mockStudents: Student[] = [
   {
@@ -33,6 +64,7 @@ export const mockStudents: Student[] = [
     avatar: 'https://img.usecurling.com/ppl/thumbnail?gender=male&seed=1',
     level: 'B1',
     joinedAt: '2024-01-15',
+    subscriptionId: 'sub1',
   },
   {
     id: '2',
@@ -53,6 +85,7 @@ export const mockStudents: Student[] = [
     avatar: 'https://img.usecurling.com/ppl/thumbnail?gender=male&seed=3',
     level: 'C1',
     joinedAt: '2023-11-05',
+    subscriptionId: 'sub2',
   },
 ]
 
@@ -63,6 +96,8 @@ export const mockClasses: ClassGroup[] = [
     schedule: 'Seg/Qua 19:00',
     status: 'active',
     studentIds: ['1', '2'],
+    billingModel: 'per_student',
+    price: 350.0,
   },
   {
     id: '2',
@@ -70,6 +105,8 @@ export const mockClasses: ClassGroup[] = [
     schedule: 'Ter/Qui 18:00',
     status: 'active',
     studentIds: ['2'],
+    billingModel: 'per_student',
+    price: 350.0,
   },
   {
     id: '3',
@@ -77,6 +114,8 @@ export const mockClasses: ClassGroup[] = [
     schedule: 'Sáb 10:00',
     status: 'active',
     studentIds: ['3'],
+    billingModel: 'per_class',
+    price: 1200.0,
   },
 ]
 

@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { useAuth } from '@/contexts/AuthContext'
@@ -24,6 +24,8 @@ import {
 import { Label } from '@/components/ui/label'
 import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
+import { BottomNav } from './BottomNav'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export default function Layout() {
   const { user, login, loginAsStudent, isLoading } = useAuth()
@@ -31,6 +33,14 @@ export default function Layout() {
   const [password, setPassword] = useState('')
   const [isLoggingIn, setIsLoggingIn] = useState(false)
   const { toast } = useToast()
+  const isMobile = useIsMobile()
+  const location = useLocation()
+
+  // If user is admin, they should use the admin layout, but if they land here by mistake or shared component usage:
+  if (user?.role === 'admin') {
+    // Ideally redirect to /admin, but for now let's just show a message or handle it
+    // In App.tsx we separate routes, so this Layout is for students/teachers
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -161,12 +171,12 @@ export default function Layout() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-background/50 transition-all duration-300 ease-in-out">
+    <SidebarProvider defaultOpen={!isMobile}>
+      {!isMobile && <AppSidebar />}
+      <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-background/50 transition-all duration-300 ease-in-out pb-16 md:pb-0">
         <header className="h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-between px-4 sticky top-0 z-10 shadow-sm">
           <div className="flex items-center gap-4">
-            <SidebarTrigger />
+            {!isMobile && <SidebarTrigger />}
             <div className="hidden md:flex relative w-64 transition-all focus-within:w-80">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -174,6 +184,11 @@ export default function Layout() {
                 className="pl-8 h-9 bg-muted/50 focus:bg-background transition-colors"
               />
             </div>
+            {isMobile && (
+              <span className="font-bold text-lg text-primary">
+                SmartClassHub
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <Button
@@ -232,6 +247,7 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
+      <BottomNav />
     </SidebarProvider>
   )
 }

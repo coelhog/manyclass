@@ -1,7 +1,8 @@
-import { Student } from '@/types'
-import { mockStudents } from '@/lib/mock-data'
+import { Student, Subscription } from '@/types'
+import { mockStudents, mockSubscriptions } from '@/lib/mock-data'
 
 const STORAGE_KEY = 'smartclass_students'
+const SUBSCRIPTIONS_KEY = 'smartclass_subscriptions'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -47,5 +48,30 @@ export const studentService = {
     const students = await studentService.getAll()
     const filtered = students.filter((s) => s.id !== id)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+  },
+
+  // Subscriptions
+  getSubscriptionByStudentId: async (
+    studentId: string,
+  ): Promise<Subscription | undefined> => {
+    await delay(300)
+    const stored = localStorage.getItem(SUBSCRIPTIONS_KEY)
+    const subscriptions: Subscription[] = stored
+      ? JSON.parse(stored)
+      : mockSubscriptions
+    return subscriptions.find((s) => s.studentId === studentId)
+  },
+
+  createSubscription: async (
+    sub: Omit<Subscription, 'id'>,
+  ): Promise<Subscription> => {
+    const stored = localStorage.getItem(SUBSCRIPTIONS_KEY)
+    const subscriptions: Subscription[] = stored
+      ? JSON.parse(stored)
+      : mockSubscriptions
+    const newSub = { ...sub, id: Math.random().toString(36).substr(2, 9) }
+    const updated = [...subscriptions, newSub]
+    localStorage.setItem(SUBSCRIPTIONS_KEY, JSON.stringify(updated))
+    return newSub
   },
 }

@@ -4,8 +4,6 @@ import {
   eachDayOfInterval,
   format,
   isToday,
-  addMinutes,
-  startOfDay,
   isSameDay,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -49,8 +47,8 @@ export function WeekView({
 
   return (
     <div className="flex flex-col h-full border rounded-lg overflow-hidden bg-card animate-in fade-in duration-500">
-      <div className="grid grid-cols-8 border-b bg-muted/40">
-        <div className="py-2 text-center text-sm font-medium text-muted-foreground border-r">
+      <div className="grid grid-cols-8 border-b bg-muted/40 min-w-[600px] md:min-w-0">
+        <div className="py-2 text-center text-sm font-medium text-muted-foreground border-r sticky left-0 bg-muted/40 z-10">
           Hora
         </div>
         {days.map((day) => (
@@ -72,13 +70,13 @@ export function WeekView({
       </div>
 
       <ScrollArea className="flex-1 h-[600px]">
-        <div className="grid grid-cols-8 relative min-w-[800px]">
+        <div className="grid grid-cols-8 relative min-w-[600px] md:min-w-0">
           {/* Time Column */}
           <div className="border-r bg-background sticky left-0 z-20">
             {hours.map((hour) => (
               <div
                 key={hour}
-                className="h-[60px] border-b text-xs text-muted-foreground flex items-start justify-center pt-1"
+                className="h-[60px] border-b text-xs text-muted-foreground flex items-start justify-center pt-1 bg-background"
               >
                 {format(new Date().setHours(hour, 0), 'HH:mm')}
               </div>

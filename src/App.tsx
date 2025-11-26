@@ -18,6 +18,12 @@ import Payments from './pages/Payments'
 import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
 
+// Admin Pages
+import AdminLogin from './pages/admin/AdminLogin'
+import AdminLayout from './pages/admin/AdminLayout'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import TeachersList from './pages/admin/TeachersList'
+
 const App = () => (
   <BrowserRouter
     future={{ v7_startTransition: false, v7_relativeSplatPath: false }}
@@ -28,6 +34,15 @@ const App = () => (
           <Toaster />
           <Sonner />
           <Routes>
+            {/* Admin Routes */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="teachers" element={<TeachersList />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
+
+            {/* App Routes */}
             <Route element={<Layout />}>
               <Route path="/" element={<Index />} />
               <Route path="/students" element={<Students />} />

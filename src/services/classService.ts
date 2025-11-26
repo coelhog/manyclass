@@ -3,8 +3,10 @@ import {
   CalendarEvent,
   CreateEventDTO,
   UpdateEventDTO,
+  Subscription,
 } from '@/types'
 import { mockClasses } from '@/lib/mock-data'
+import { studentService } from './studentService'
 
 const CLASSES_KEY = 'smartclass_classes'
 const EVENTS_KEY = 'smartclass_events'
@@ -32,6 +34,28 @@ export const classService = {
     const newClass = { ...data, id: Math.random().toString(36).substr(2, 9) }
     const updated = [...classes, newClass]
     localStorage.setItem(CLASSES_KEY, JSON.stringify(updated))
+
+    // Auto-generate subscriptions logic (Mock)
+    if (newClass.billingModel === 'per_class') {
+      // Create a subscription for the class itself or link students
+      // For simplicity, we just log it here, but in a real app we would create records
+      console.log('Generated class subscription for', newClass.name)
+    } else if (newClass.billingModel === 'per_student') {
+      // If students were added during creation, generate subs
+      if (newClass.studentIds.length > 0) {
+        newClass.studentIds.forEach(async (studentId) => {
+          await studentService.createSubscription({
+            studentId,
+            plan: 'student_monthly',
+            status: 'pending',
+            startDate: new Date().toISOString(),
+            nextBillingDate: new Date().toISOString(),
+            amount: newClass.price,
+          })
+        })
+      }
+    }
+
     return newClass
   },
 

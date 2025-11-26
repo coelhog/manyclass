@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { mockUser, mockStudentUser } from '@/lib/mock-data'
+import { mockUser, mockStudentUser, mockAdminUser } from '@/lib/mock-data'
 import { User } from '@/types'
 
 interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<void>
   loginAsStudent: () => Promise<void>
+  loginAsAdmin: (password: string) => Promise<void>
   logout: () => void
   isLoading: boolean
 }
@@ -49,6 +50,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
   }
 
+  const loginAsAdmin = async (password: string) => {
+    return new Promise<void>((resolve, reject) => {
+      setTimeout(() => {
+        if (password === 'admin') {
+          setUser(mockAdminUser)
+          localStorage.setItem('smartclass_user', JSON.stringify(mockAdminUser))
+          resolve()
+        } else {
+          reject(new Error('Senha inválida'))
+        }
+      }, 800)
+    })
+  }
+
   const logout = () => {
     setUser(null)
     localStorage.removeItem('smartclass_user')
@@ -56,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, loginAsStudent, logout, isLoading }}
+      value={{ user, login, loginAsStudent, loginAsAdmin, logout, isLoading }}
     >
       {children}
     </AuthContext.Provider>

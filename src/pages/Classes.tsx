@@ -9,10 +9,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Plus, Search, Users, Clock } from 'lucide-react'
+import { Plus, Search, Users, Clock, CreditCard } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { classService } from '@/services/classService'
-import { ClassGroup } from '@/types'
+import { ClassGroup, BillingModel } from '@/types'
 import { Link } from 'react-router-dom'
 import {
   Dialog,
@@ -24,6 +24,13 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { PageTransition } from '@/components/PageTransition'
 import { CardGridSkeleton } from '@/components/skeletons'
@@ -32,7 +39,17 @@ export default function Classes() {
   const [classes, setClasses] = useState<ClassGroup[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [newClass, setNewClass] = useState({ name: '', schedule: '' })
+  const [newClass, setNewClass] = useState<{
+    name: string
+    schedule: string
+    billingModel: BillingModel
+    price: number
+  }>({
+    name: '',
+    schedule: '',
+    billingModel: 'per_student',
+    price: 0,
+  })
   const { toast } = useToast()
 
   useEffect(() => {
@@ -63,7 +80,12 @@ export default function Classes() {
       toast({ title: 'Turma criada com sucesso!' })
       setIsDialogOpen(false)
       loadClasses()
-      setNewClass({ name: '', schedule: '' })
+      setNewClass({
+        name: '',
+        schedule: '',
+        billingModel: 'per_student',
+        price: 0,
+      })
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao criar turma' })
     }
@@ -83,7 +105,7 @@ export default function Classes() {
             <DialogHeader>
               <DialogTitle>Nova Turma</DialogTitle>
               <DialogDescription>
-                Crie uma nova turma para adicionar alunos.
+                Crie uma nova turma e defina o modelo de cobrança.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -111,6 +133,42 @@ export default function Classes() {
                   value={newClass.schedule}
                   onChange={(e) =>
                     setNewClass({ ...newClass, schedule: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="billing" className="text-right">
+                  Cobrança
+                </Label>
+                <Select
+                  value={newClass.billingModel}
+                  onValueChange={(v) =>
+                    setNewClass({
+                      ...newClass,
+                      billingModel: v as BillingModel,
+                    })
+                  }
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="per_student">Por Aluno</SelectItem>
+                    <SelectItem value="per_class">Por Turma</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="price" className="text-right">
+                  Preço (R$)
+                </Label>
+                <Input
+                  id="price"
+                  type="number"
+                  className="col-span-3"
+                  value={newClass.price}
+                  onChange={(e) =>
+                    setNewClass({ ...newClass, price: Number(e.target.value) })
                   }
                 />
               </div>
@@ -163,6 +221,13 @@ export default function Classes() {
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Clock className="mr-2 h-4 w-4" />
                     {cls.schedule}
+                  </div>
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    {cls.billingModel === 'per_student'
+                      ? 'Por Aluno'
+                      : 'Por Turma'}{' '}
+                    - R$ {cls.price.toFixed(2)}
                   </div>
                 </div>
               </CardContent>
