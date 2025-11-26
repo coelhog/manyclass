@@ -6,7 +6,13 @@ interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<void>
   loginAsStudent: () => Promise<void>
-  loginAsAdmin: (password: string) => Promise<void>
+  loginAsAdmin: (email: string, password: string) => Promise<void>
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    role: 'teacher' | 'student',
+  ) => Promise<void>
   logout: () => void
   isLoading: boolean
 }
@@ -29,7 +35,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return new Promise<void>((resolve, reject) => {
       setTimeout(() => {
         if (email && password) {
-          const newUser = { ...mockUser, email }
+          // Mock logic to distinguish student vs teacher based on email for demo purposes
+          // In a real app, the backend would handle this
+          const isStudent = email.includes('student') || email.includes('aluno')
+          const baseUser = isStudent ? mockStudentUser : mockUser
+
+          const newUser = { ...baseUser, email }
           setUser(newUser)
           localStorage.setItem('smartclass_user', JSON.stringify(newUser))
           resolve()
@@ -50,17 +61,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
   }
 
-  const loginAsAdmin = async (password: string) => {
+  const loginAsAdmin = async (email: string, password: string) => {
     return new Promise<void>((resolve, reject) => {
       setTimeout(() => {
-        if (password === 'admin') {
-          setUser(mockAdminUser)
-          localStorage.setItem('smartclass_user', JSON.stringify(mockAdminUser))
+        if (email && password === 'admin') {
+          const adminUser = { ...mockAdminUser, email }
+          setUser(adminUser)
+          localStorage.setItem('smartclass_user', JSON.stringify(adminUser))
           resolve()
         } else {
-          reject(new Error('Senha inválida'))
+          reject(new Error('Credenciais inválidas'))
         }
       }, 800)
+    })
+  }
+
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    role: 'teacher' | 'student',
+  ) => {
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        const newUser: User = {
+          id: Math.random().toString(36).substr(2, 9),
+          name,
+          email,
+          role,
+          avatar: `https://img.usecurling.com/ppl/medium?gender=${Math.random() > 0.5 ? 'male' : 'female'}`,
+          plan_id: role === 'teacher' ? 'basic' : undefined,
+        }
+        setUser(newUser)
+        localStorage.setItem('smartclass_user', JSON.stringify(newUser))
+        resolve()
+      }, 1000)
     })
   }
 
@@ -71,7 +106,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, loginAsStudent, loginAsAdmin, logout, isLoading }}
+      value={{
+        user,
+        login,
+        loginAsStudent,
+        loginAsAdmin,
+        register,
+        logout,
+        isLoading,
+      }}
     >
       {children}
     </AuthContext.Provider>

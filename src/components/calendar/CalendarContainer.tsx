@@ -4,6 +4,8 @@ import {
   subMonths,
   addWeeks,
   subWeeks,
+  addDays,
+  subDays,
   setHours,
   setMinutes,
   differenceInMinutes,
@@ -14,13 +16,14 @@ import { classService } from '@/services/classService'
 import { CalendarHeader } from './CalendarHeader'
 import { MonthView } from './MonthView'
 import { WeekView } from './WeekView'
+import { DayView } from './DayView'
 import { ClassModal } from './ClassModal'
 import { useToast } from '@/hooks/use-toast'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function CalendarContainer() {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [view, setView] = useState<'month' | 'week'>('month')
+  const [view, setView] = useState<'month' | 'week' | 'day'>('month')
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [filteredEvents, setFilteredEvents] = useState<CalendarEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -65,16 +68,20 @@ export function CalendarContainer() {
   const handlePrev = () => {
     if (view === 'month') {
       setCurrentDate(subMonths(currentDate, 1))
-    } else {
+    } else if (view === 'week') {
       setCurrentDate(subWeeks(currentDate, 1))
+    } else {
+      setCurrentDate(subDays(currentDate, 1))
     }
   }
 
   const handleNext = () => {
     if (view === 'month') {
       setCurrentDate(addMonths(currentDate, 1))
-    } else {
+    } else if (view === 'week') {
       setCurrentDate(addWeeks(currentDate, 1))
+    } else {
+      setCurrentDate(addDays(currentDate, 1))
     }
   }
 
@@ -211,8 +218,16 @@ export function CalendarContainer() {
             onDateClick={handleDateClick}
             onEventDrop={handleEventDrop}
           />
-        ) : (
+        ) : view === 'week' ? (
           <WeekView
+            currentDate={currentDate}
+            events={filteredEvents}
+            onEventClick={handleEventClick}
+            onDateClick={handleDateClick}
+            onEventDrop={handleEventDrop}
+          />
+        ) : (
+          <DayView
             currentDate={currentDate}
             events={filteredEvents}
             onEventClick={handleEventClick}

@@ -10,7 +10,7 @@ import { ptBR } from 'date-fns/locale'
 import { CalendarEvent } from '@/types'
 import { cn } from '@/lib/utils'
 import { EventCard } from './EventCard'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 
 interface WeekViewProps {
   currentDate: Date
@@ -47,76 +47,79 @@ export function WeekView({
 
   return (
     <div className="flex flex-col h-full border rounded-lg overflow-hidden bg-card animate-in fade-in duration-500">
-      <div className="grid grid-cols-8 border-b bg-muted/40 min-w-[600px] md:min-w-0">
-        <div className="py-2 text-center text-sm font-medium text-muted-foreground border-r sticky left-0 bg-muted/40 z-10">
-          Hora
-        </div>
-        {days.map((day) => (
-          <div
-            key={day.toString()}
-            className={cn(
-              'py-2 text-center text-sm font-medium border-r last:border-r-0',
-              isToday(day) && 'text-primary font-bold',
-            )}
-          >
-            <div className="text-xs text-muted-foreground uppercase">
-              {format(day, 'EEE', { locale: ptBR })}
+      <ScrollArea className="h-full">
+        <div className="min-w-[800px] md:min-w-0">
+          <div className="grid grid-cols-8 border-b bg-muted/40 sticky top-0 z-30">
+            <div className="py-2 text-center text-sm font-medium text-muted-foreground border-r bg-muted/40">
+              Hora
             </div>
-            <div className={cn('text-lg', isToday(day) && 'text-primary')}>
-              {format(day, 'd')}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <ScrollArea className="flex-1 h-[600px]">
-        <div className="grid grid-cols-8 relative min-w-[600px] md:min-w-0">
-          {/* Time Column */}
-          <div className="border-r bg-background sticky left-0 z-20">
-            {hours.map((hour) => (
+            {days.map((day) => (
               <div
-                key={hour}
-                className="h-[60px] border-b text-xs text-muted-foreground flex items-start justify-center pt-1 bg-background"
+                key={day.toString()}
+                className={cn(
+                  'py-2 text-center text-sm font-medium border-r last:border-r-0',
+                  isToday(day) && 'text-primary font-bold',
+                )}
               >
-                {format(new Date().setHours(hour, 0), 'HH:mm')}
+                <div className="text-xs text-muted-foreground uppercase">
+                  {format(day, 'EEE', { locale: ptBR })}
+                </div>
+                <div className={cn('text-lg', isToday(day) && 'text-primary')}>
+                  {format(day, 'd')}
+                </div>
               </div>
             ))}
           </div>
 
-          {/* Days Columns */}
-          {days.map((day) => {
-            const dayEvents = events.filter((event) =>
-              isSameDay(new Date(event.start_time), day),
-            )
+          <div className="grid grid-cols-8 relative">
+            {/* Time Column */}
+            <div className="border-r bg-background sticky left-0 z-20">
+              {hours.map((hour) => (
+                <div
+                  key={hour}
+                  className="h-[60px] border-b text-xs text-muted-foreground flex items-start justify-center pt-1 bg-background"
+                >
+                  {format(new Date().setHours(hour, 0), 'HH:mm')}
+                </div>
+              ))}
+            </div>
 
-            return (
-              <div
-                key={day.toString()}
-                className="relative border-r last:border-r-0"
-              >
-                {hours.map((hour) => (
-                  <div
-                    key={hour}
-                    className="h-[60px] border-b hover:bg-accent/5 transition-colors"
-                    onClick={() => onDateClick(day, hour)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, day, hour)}
-                  />
-                ))}
+            {/* Days Columns */}
+            {days.map((day) => {
+              const dayEvents = events.filter((event) =>
+                isSameDay(new Date(event.start_time), day),
+              )
 
-                {/* Events Layer */}
-                {dayEvents.map((event) => (
-                  <EventCard
-                    key={event.id}
-                    event={event}
-                    onClick={onEventClick}
-                    view="week"
-                  />
-                ))}
-              </div>
-            )
-          })}
+              return (
+                <div
+                  key={day.toString()}
+                  className="relative border-r last:border-r-0"
+                >
+                  {hours.map((hour) => (
+                    <div
+                      key={hour}
+                      className="h-[60px] border-b hover:bg-accent/5 transition-colors"
+                      onClick={() => onDateClick(day, hour)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, day, hour)}
+                    />
+                  ))}
+
+                  {/* Events Layer */}
+                  {dayEvents.map((event) => (
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      onClick={onEventClick}
+                      view="week"
+                    />
+                  ))}
+                </div>
+              )
+            })}
+          </div>
         </div>
+        <ScrollBar orientation="horizontal" />
       </ScrollArea>
     </div>
   )

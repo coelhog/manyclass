@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom'
 
 export default function AdminLogin() {
   const { loginAsAdmin } = useAuth()
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
@@ -25,7 +26,7 @@ export default function AdminLogin() {
     e.preventDefault()
     setIsLoading(true)
     try {
-      await loginAsAdmin(password)
+      await loginAsAdmin(email, password)
       toast({
         title: 'Acesso Administrativo',
         description: 'Bem-vindo ao painel de administração.',
@@ -35,7 +36,7 @@ export default function AdminLogin() {
       toast({
         variant: 'destructive',
         title: 'Acesso Negado',
-        description: 'Senha incorreta.',
+        description: 'Credenciais incorretas.',
       })
     } finally {
       setIsLoading(false)
@@ -59,7 +60,19 @@ export default function AdminLogin() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="password">Senha de Acesso</Label>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="bg-slate-800 border-slate-700 focus-visible:ring-blue-500"
+                placeholder="admin@smartclass.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
               <Input
                 id="password"
                 type="password"

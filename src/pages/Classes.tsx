@@ -153,8 +153,12 @@ export default function Classes() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="per_student">Por Aluno</SelectItem>
-                    <SelectItem value="per_class">Por Turma</SelectItem>
+                    <SelectItem value="per_student">
+                      Por Aluno (Mensalidade)
+                    </SelectItem>
+                    <SelectItem value="per_class">
+                      Por Turma (Valor Fixo)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -11,13 +11,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  XAxis,
-  ResponsiveContainer,
-} from 'recharts'
+import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts'
 
 const data = [
   { name: 'Jan', teachers: 4, students: 24 },

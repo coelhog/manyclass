@@ -69,7 +69,18 @@ export default function TeachersList() {
                 <TableCell className="font-medium">{teacher.name}</TableCell>
                 <TableCell>{teacher.email}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{teacher.plan}</Badge>
+                  <Badge
+                    variant="outline"
+                    className={
+                      teacher.plan === 'Premium'
+                        ? 'bg-purple-100 text-purple-800 border-purple-200'
+                        : teacher.plan === 'Intermediate'
+                          ? 'bg-blue-100 text-blue-800 border-blue-200'
+                          : ''
+                    }
+                  >
+                    {teacher.plan}
+                  </Badge>
                 </TableCell>
                 <TableCell>{teacher.students}</TableCell>
                 <TableCell>

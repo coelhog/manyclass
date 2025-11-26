@@ -11,27 +11,158 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Search, DollarSign } from 'lucide-react'
-import { mockPayments } from '@/lib/mock-data'
+import { studentService } from '@/services/studentService'
+import { Payment } from '@/types'
 import { PageTransition } from '@/components/PageTransition'
 import { TableSkeleton } from '@/components/skeletons'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { useToast } from '@/hooks/use-toast'
 
 export default function Payments() {
-  const [payments] = useState(mockPayments)
+  const [payments, setPayments] = useState<Payment[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [newPayment, setNewPayment] = useState({
+    student: '',
+    description: '',
+    amount: 0,
+    dueDate: '',
+  })
+  const { toast } = useToast()
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 600)
-    return () => clearTimeout(timer)
+    loadPayments()
   }, [])
+
+  const loadPayments = async () => {
+    setIsLoading(true)
+    try {
+      const data = await studentService.getAllPayments()
+      setPayments(data)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCreate = async () => {
+    if (!newPayment.student || !newPayment.amount) {
+      toast({
+        variant: 'destructive',
+        title: 'Preencha os campos obrigatórios',
+      })
+      return
+    }
+    try {
+      await studentService.createPayment({
+        ...newPayment,
+        status: 'pending',
+        dueDate: newPayment.dueDate || new Date().toISOString(),
+      })
+      toast({ title: 'Pagamento registrado com sucesso!' })
+      setIsDialogOpen(false)
+      loadPayments()
+      setNewPayment({ student: '', description: '', amount: 0, dueDate: '' })
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Erro ao registrar pagamento' })
+    }
+  }
 
   return (
     <PageTransition className="space-y-8">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Pagamentos</h1>
-        <Button className="shadow-sm hover:shadow-md transition-all">
-          <Plus className="mr-2 h-4 w-4" /> Registrar Pagamento
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="shadow-sm hover:shadow-md transition-all">
+              <Plus className="mr-2 h-4 w-4" /> Registrar Pagamento
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Novo Pagamento</DialogTitle>
+              <DialogDescription>
+                Registre um novo pagamento manual para um aluno.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="student" className="text-right">
+                  Aluno
+                </Label>
+                <Input
+                  id="student"
+                  className="col-span-3"
+                  value={newPayment.student}
+                  onChange={(e) =>
+                    setNewPayment({ ...newPayment, student: e.target.value })
+                  }
+                  placeholder="Nome do aluno"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">
+                  Descrição
+                </Label>
+                <Input
+                  id="description"
+                  className="col-span-3"
+                  value={newPayment.description}
+                  onChange={(e) =>
+                    setNewPayment({
+                      ...newPayment,
+                      description: e.target.value,
+                    })
+                  }
+                  placeholder="Ex: Mensalidade Junho"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="amount" className="text-right">
+                  Valor (R$)
+                </Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  className="col-span-3"
+                  value={newPayment.amount}
+                  onChange={(e) =>
+                    setNewPayment({
+                      ...newPayment,
+                      amount: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="dueDate" className="text-right">
+                  Vencimento
+                </Label>
+                <Input
+                  id="dueDate"
+                  type="date"
+                  className="col-span-3"
+                  value={newPayment.dueDate}
+                  onChange={(e) =>
+                    setNewPayment({ ...newPayment, dueDate: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleCreate}>Registrar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

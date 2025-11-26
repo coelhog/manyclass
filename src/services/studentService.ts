@@ -1,8 +1,9 @@
-import { Student, Subscription } from '@/types'
-import { mockStudents, mockSubscriptions } from '@/lib/mock-data'
+import { Student, Subscription, Payment } from '@/types'
+import { mockStudents, mockSubscriptions, mockPayments } from '@/lib/mock-data'
 
 const STORAGE_KEY = 'smartclass_students'
 const SUBSCRIPTIONS_KEY = 'smartclass_subscriptions'
+const PAYMENTS_KEY = 'smartclass_payments'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -73,5 +74,26 @@ export const studentService = {
     const updated = [...subscriptions, newSub]
     localStorage.setItem(SUBSCRIPTIONS_KEY, JSON.stringify(updated))
     return newSub
+  },
+
+  // Payments
+  getAllPayments: async (): Promise<Payment[]> => {
+    await delay(300)
+    const stored = localStorage.getItem(PAYMENTS_KEY)
+    if (stored) return JSON.parse(stored)
+    localStorage.setItem(PAYMENTS_KEY, JSON.stringify(mockPayments))
+    return mockPayments
+  },
+
+  createPayment: async (payment: Omit<Payment, 'id'>): Promise<Payment> => {
+    await delay(300)
+    const payments = await studentService.getAllPayments()
+    const newPayment = {
+      ...payment,
+      id: Math.random().toString(36).substr(2, 9),
+    }
+    const updated = [...payments, newPayment]
+    localStorage.setItem(PAYMENTS_KEY, JSON.stringify(updated))
+    return newPayment
   },
 }

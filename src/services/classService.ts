@@ -35,7 +35,7 @@ export const classService = {
     const updated = [...classes, newClass]
     localStorage.setItem(CLASSES_KEY, JSON.stringify(updated))
 
-    // Auto-generate subscriptions logic (Mock)
+    // Auto-generate subscriptions logic
     if (newClass.billingModel === 'per_class') {
       // Create a subscription for the class itself or link students
       // For simplicity, we just log it here, but in a real app we would create records
@@ -43,7 +43,7 @@ export const classService = {
     } else if (newClass.billingModel === 'per_student') {
       // If students were added during creation, generate subs
       if (newClass.studentIds.length > 0) {
-        newClass.studentIds.forEach(async (studentId) => {
+        for (const studentId of newClass.studentIds) {
           await studentService.createSubscription({
             studentId,
             plan: 'student_monthly',
@@ -52,7 +52,7 @@ export const classService = {
             nextBillingDate: new Date().toISOString(),
             amount: newClass.price,
           })
-        })
+        }
       }
     }
 
@@ -67,6 +67,31 @@ export const classService = {
     const classes = await classService.getAllClasses()
     const index = classes.findIndex((c) => c.id === id)
     if (index === -1) throw new Error('Class not found')
+
+    // Check if new students were added to generate subscriptions
+    const oldStudentIds = classes[index].studentIds
+    const newStudentIds = data.studentIds || []
+
+    const addedStudents = newStudentIds.filter(
+      (id) => !oldStudentIds.includes(id),
+    )
+
+    if (
+      addedStudents.length > 0 &&
+      classes[index].billingModel === 'per_student'
+    ) {
+      for (const studentId of addedStudents) {
+        await studentService.createSubscription({
+          studentId,
+          plan: 'student_monthly',
+          status: 'pending',
+          startDate: new Date().toISOString(),
+          nextBillingDate: new Date().toISOString(),
+          amount: classes[index].price,
+        })
+      }
+    }
+
     const updated = { ...classes[index], ...data }
     classes[index] = updated
     localStorage.setItem(CLASSES_KEY, JSON.stringify(classes))

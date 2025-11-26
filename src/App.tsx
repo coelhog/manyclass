@@ -6,6 +6,9 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/components/theme-provider'
 import Layout from './components/Layout'
 import Index from './pages/Index'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Plans from './pages/Plans'
 import Students from './pages/Students'
 import StudentDetail from './pages/StudentDetail'
 import Classes from './pages/Classes'
@@ -34,6 +37,10 @@ const App = () => (
           <Toaster />
           <Sonner />
           <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin" element={<AdminLayout />}>
@@ -45,6 +52,7 @@ const App = () => (
             {/* App Routes */}
             <Route element={<Layout />}>
               <Route path="/" element={<Index />} />
+              <Route path="/plans" element={<Plans />} />
               <Route path="/students" element={<Students />} />
               <Route path="/students/:id" element={<StudentDetail />} />
               <Route path="/classes" element={<Classes />} />

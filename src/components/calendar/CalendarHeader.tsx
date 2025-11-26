@@ -13,8 +13,8 @@ import { ptBR } from 'date-fns/locale'
 
 interface CalendarHeaderProps {
   currentDate: Date
-  view: 'month' | 'week'
-  onViewChange: (view: 'month' | 'week') => void
+  view: 'month' | 'week' | 'day'
+  onViewChange: (view: 'month' | 'week' | 'day') => void
   onPrev: () => void
   onNext: () => void
   onToday: () => void
@@ -77,7 +77,7 @@ export function CalendarHeader({
         </div>
         <Select
           value={view}
-          onValueChange={(v) => onViewChange(v as 'month' | 'week')}
+          onValueChange={(v) => onViewChange(v as 'month' | 'week' | 'day')}
         >
           <SelectTrigger className="w-[120px] h-9">
             <SelectValue />
@@ -85,6 +85,7 @@ export function CalendarHeader({
           <SelectContent>
             <SelectItem value="month">Mês</SelectItem>
             <SelectItem value="week">Semana</SelectItem>
+            <SelectItem value="day">Dia</SelectItem>
           </SelectContent>
         </Select>
         <Button size="sm" onClick={onAddEvent} className="h-9">
