@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -46,11 +46,7 @@ export default function Students() {
   })
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadStudents()
-  }, [])
-
-  const loadStudents = async () => {
+  const loadStudents = useCallback(async () => {
     setIsLoading(true)
     try {
       const data = await studentService.getAll()
@@ -60,7 +56,11 @@ export default function Students() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    loadStudents()
+  }, [loadStudents])
 
   const filteredStudents = students.filter((student) =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()),

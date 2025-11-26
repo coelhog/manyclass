@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { classService } from '@/services/classService'
 import { studentService } from '@/services/studentService'
@@ -17,6 +17,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
+import { Label } from '@/components/ui/label'
 
 export default function ClassDetail() {
   const { id } = useParams<{ id: string }>()
@@ -27,11 +28,7 @@ export default function ClassDetail() {
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadData()
-  }, [id])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!id) return
     const cls = await classService.getClassById(id)
     if (cls) {
@@ -40,7 +37,11 @@ export default function ClassDetail() {
       setAllStudents(all)
       setStudents(all.filter((s) => cls.studentIds.includes(s.id)))
     }
-  }
+  }, [id])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const handleAddStudents = async () => {
     if (!classGroup || !id) return
