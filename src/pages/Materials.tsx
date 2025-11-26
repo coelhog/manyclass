@@ -10,7 +10,7 @@ import {
 import { Plus, Search, FileText, Download, Eye, Trash2 } from 'lucide-react'
 import { PageTransition } from '@/components/PageTransition'
 import { CardGridSkeleton } from '@/components/skeletons'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { materialService } from '@/services/materialService'
 import { studentService } from '@/services/studentService'
@@ -41,11 +41,7 @@ export default function Materials() {
   })
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadData()
-  }, [user])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
       if (user?.role === 'student') {
@@ -62,7 +58,11 @@ export default function Materials() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const handleCreate = async () => {
     if (!newMaterial.title) {

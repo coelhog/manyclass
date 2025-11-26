@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -52,11 +52,7 @@ export default function Classes() {
   })
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadClasses()
-  }, [])
-
-  const loadClasses = async () => {
+  const loadClasses = useCallback(async () => {
     setIsLoading(true)
     try {
       const data = await classService.getAllClasses()
@@ -77,7 +73,11 @@ export default function Classes() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    loadClasses()
+  }, [loadClasses])
 
   const handleCreate = async () => {
     if (!newClass.name) {
