@@ -11,6 +11,7 @@ import {
   CheckSquare,
   MessageSquare,
   Clock,
+  KanbanSquare,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import {
@@ -42,6 +43,7 @@ export function AppSidebar() {
     { title: 'Turmas', url: '/classes', icon: GraduationCap },
     { title: 'Calendário', url: '/calendar', icon: Calendar },
     { title: 'Agenda', url: '/schedule', icon: Clock },
+    { title: 'Quadro Kanban', url: '/kanban', icon: KanbanSquare },
     { title: 'Tarefas', url: '/tasks', icon: CheckSquare },
     { title: 'Materiais', url: '/materials', icon: BookOpen },
     { title: 'Mensagens', url: '/messages', icon: MessageSquare },

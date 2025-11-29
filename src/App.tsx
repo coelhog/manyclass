@@ -21,6 +21,8 @@ import Payments from './pages/Payments'
 import Settings from './pages/Settings'
 import AutomatedMessages from './pages/AutomatedMessages'
 import TeacherSchedule from './pages/TeacherSchedule'
+import TeacherKanban from './pages/TeacherKanban'
+import BookingPage from './pages/BookingPage'
 import NotFound from './pages/NotFound'
 
 // Admin Pages
@@ -42,6 +44,7 @@ const App = () => (
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/book/:teacherId" element={<BookingPage />} />
 
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
@@ -66,6 +69,7 @@ const App = () => (
               <Route path="/payments" element={<Payments />} />
               <Route path="/messages" element={<AutomatedMessages />} />
               <Route path="/schedule" element={<TeacherSchedule />} />
+              <Route path="/kanban" element={<TeacherKanban />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />

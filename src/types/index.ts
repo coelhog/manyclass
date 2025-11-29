@@ -90,7 +90,7 @@ export interface CalendarEvent {
   description?: string
   start_time: string
   end_time: string
-  type: 'class' | 'task' | 'test'
+  type: 'class' | 'task' | 'test' | 'meeting'
   student_ids: string[]
   color?: string
 }
@@ -100,7 +100,7 @@ export interface CreateEventDTO {
   description?: string
   start_time: string
   end_time: string
-  type: 'class' | 'task' | 'test'
+  type: 'class' | 'task' | 'test' | 'meeting'
   student_ids: string[]
 }
 
@@ -153,4 +153,25 @@ export interface TeacherSchedule {
   id: string
   teacherId: string
   availability: TimeSlot[]
+  bookingDuration?: number // in minutes, default 60
+  bookingLinkEnabled?: boolean
+}
+
+// Kanban Types
+export interface KanbanColumn {
+  id: string
+  title: string
+  order: number
+}
+
+export interface KanbanTask {
+  id: string
+  columnId: string
+  title: string
+  description?: string
+  tags: string[]
+  category?: string
+  studentId?: string
+  order: number
+  createdAt: string
 }
