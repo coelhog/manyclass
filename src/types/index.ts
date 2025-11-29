@@ -184,3 +184,23 @@ export interface KanbanTask {
   order: number
   createdAt: string
 }
+
+// Integration Types
+export type IntegrationProvider =
+  | 'google_calendar'
+  | 'google_meet'
+  | 'zoom'
+  | 'microsoft_teams'
+  | 'asaas'
+
+export interface Integration {
+  id: string
+  name: string
+  provider: IntegrationProvider
+  type: 'oauth' | 'api_key'
+  status: 'connected' | 'disconnected'
+  logo: string
+  description: string
+  config?: Record<string, any>
+  connectedAt?: string
+}

@@ -14,13 +14,23 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
 import { PageTransition } from '@/components/PageTransition'
+import { Link } from 'react-router-dom'
+import { Blocks, ExternalLink } from 'lucide-react'
 
 export default function Settings() {
   const { user } = useAuth()
 
   return (
     <PageTransition className="space-y-8">
-      <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
+        <Button variant="outline" asChild>
+          <Link to="/settings/integrations">
+            <Blocks className="mr-2 h-4 w-4" />
+            Gerenciar Integrações
+          </Link>
+        </Button>
+      </div>
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
@@ -110,27 +120,50 @@ export default function Settings() {
           value="system"
           className="mt-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
         >
-          <Card>
-            <CardHeader>
-              <CardTitle>Informações do Sistema</CardTitle>
-              <CardDescription>
-                Detalhes sobre a versão atual e status.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm space-y-2">
-                <p>
-                  <strong>Versão:</strong> 0.0.1 (Alpha)
+          <div className="grid gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Integrações</CardTitle>
+                <CardDescription>
+                  Conecte serviços externos como Google Calendar, Zoom e Asaas.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Gerencie suas conexões com ferramentas de terceiros para
+                  automatizar seu fluxo de trabalho.
                 </p>
-                <p>
-                  <strong>Build:</strong> 8c2a2f7
-                </p>
-                <p>
-                  <strong>Ambiente:</strong> Desenvolvimento
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+                <Button variant="secondary" asChild>
+                  <Link to="/settings/integrations">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Acessar Página de Integrações
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Informações do Sistema</CardTitle>
+                <CardDescription>
+                  Detalhes sobre a versão atual e status.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm space-y-2">
+                  <p>
+                    <strong>Versão:</strong> 0.0.1 (Alpha)
+                  </p>
+                  <p>
+                    <strong>Build:</strong> 8c2a2f7
+                  </p>
+                  <p>
+                    <strong>Ambiente:</strong> Desenvolvimento
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </PageTransition>

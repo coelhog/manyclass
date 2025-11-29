@@ -19,6 +19,7 @@ import TaskDetail from './pages/TaskDetail'
 import Materials from './pages/Materials'
 import Payments from './pages/Payments'
 import Settings from './pages/Settings'
+import Integrations from './pages/settings/Integrations'
 import AutomatedMessages from './pages/AutomatedMessages'
 import TeacherSchedule from './pages/TeacherSchedule'
 import TeacherKanban from './pages/TeacherKanban'
@@ -77,6 +78,7 @@ const App = () => (
               <Route path="/schedule" element={<TeacherSchedule />} />
               <Route path="/kanban" element={<TeacherKanban />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/settings/integrations" element={<Integrations />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
