@@ -8,15 +8,12 @@ import { mockClasses } from '@/lib/mock-data'
 import { studentService } from './studentService'
 import { taskService } from './taskService'
 import {
-  addDays,
-  format,
-  parse,
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
-  isSameDay,
   addMonths,
   subMonths,
+  addMinutes,
 } from 'date-fns'
 
 const CLASSES_KEY = 'manyclass_classes'
@@ -24,31 +21,7 @@ const EVENTS_KEY = 'manyclass_events'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-// Helper to parse schedule string "Seg/Qua 19:00"
-const parseSchedule = (schedule: string) => {
-  const parts = schedule.split(' ')
-  if (parts.length < 2) return null
-
-  const daysPart = parts[0]
-  const timePart = parts[1]
-
-  const dayMap: Record<string, number> = {
-    Dom: 0,
-    Seg: 1,
-    Ter: 2,
-    Qua: 3,
-    Qui: 4,
-    Sex: 5,
-    Sáb: 6,
-  }
-
-  const days = daysPart
-    .split('/')
-    .map((d) => dayMap[d])
-    .filter((d) => d !== undefined)
-
-  return { days, time: timePart }
-}
+const DAYS_MAP = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 export const classService = {
   // Classes Management
@@ -80,9 +53,7 @@ export const classService = {
     localStorage.setItem(CLASSES_KEY, JSON.stringify(updated))
 
     // Auto-generate subscriptions logic
-    if (newClass.billingModel === 'per_class') {
-      console.log('Generated class subscription for', newClass.name)
-    } else if (newClass.billingModel === 'per_student') {
+    if (newClass.billingModel === 'per_student') {
       if (newClass.studentIds.length > 0) {
         for (const studentId of newClass.studentIds) {
           await studentService.createSubscription({
@@ -139,6 +110,13 @@ export const classService = {
     }
 
     const updated = { ...classes[index], ...data }
+
+    // Update schedule string if days/time changed
+    if (data.days || data.startTime) {
+      const daysStr = updated.days.map((d) => DAYS_MAP[d]).join('/')
+      updated.schedule = `${daysStr} ${updated.startTime}`
+    }
+
     classes[index] = updated
     localStorage.setItem(CLASSES_KEY, JSON.stringify(classes))
     return updated
@@ -199,27 +177,25 @@ export const classService = {
 
       classes.forEach((cls) => {
         if (cls.status !== 'active') return
-        const schedule = parseSchedule(cls.schedule)
-        if (!schedule) return
 
         interval.forEach((day) => {
-          if (schedule.days.includes(day.getDay())) {
-            const [hours, minutes] = schedule.time.split(':').map(Number)
+          if (cls.days.includes(day.getDay())) {
+            const [hours, minutes] = cls.startTime.split(':').map(Number)
             const startTime = new Date(day)
             startTime.setHours(hours, minutes, 0, 0)
-            const endTime = new Date(startTime)
-            endTime.setHours(hours + 1, minutes, 0, 0) // Assume 1h duration
+            const endTime = addMinutes(startTime, cls.duration || 60)
 
             classEvents.push({
               id: `auto-${cls.id}-${day.toISOString()}`,
               title: cls.name,
-              description: 'Aula Automática',
+              description: `Aula de ${cls.name}. Link: https://meet.google.com/abc-defg-hij`, // Mock link
               start_time: startTime.toISOString(),
               end_time: endTime.toISOString(),
               type: 'class',
               student_ids: cls.studentIds,
-              color: 'green', // Default class color
+              color: cls.color || 'green',
               classId: cls.id,
+              link: 'https://meet.google.com/abc-defg-hij',
             })
           }
         })

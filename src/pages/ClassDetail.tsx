@@ -6,7 +6,7 @@ import { ClassGroup, Student } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { ArrowLeft, Plus, Trash2, DollarSign } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, DollarSign, Edit } from 'lucide-react'
 import {
   Dialog,
   DialogContent,

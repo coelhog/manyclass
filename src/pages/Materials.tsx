@@ -43,6 +43,7 @@ export default function Materials() {
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isEditAccessOpen, setIsEditAccessOpen] = useState(false)
+  const [isViewOpen, setIsViewOpen] = useState(false)
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(
     null,
   )
@@ -61,9 +62,9 @@ export default function Materials() {
       if (user?.role === 'student') {
         const data = await materialService.getByStudentId(user.id)
         setMaterials(data)
-      } else {
+      } else if (user?.role === 'teacher') {
         const [mats, studs] = await Promise.all([
-          materialService.getAll(),
+          materialService.getByTeacherId(user.id),
           studentService.getAll(),
         ])
         setMaterials(mats)
@@ -86,12 +87,14 @@ export default function Materials() {
     try {
       await materialService.create({
         ...newMaterial,
-        fileUrl: '#',
+        fileUrl:
+          'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', // Mock PDF
         fileType: 'PDF',
         studentIds:
           newMaterial.studentIds.length > 0
             ? newMaterial.studentIds
-            : students.map((s) => s.id), // Default to all if none selected
+            : students.map((s) => s.id),
+        teacherId: user?.id,
       })
       toast({ title: 'Material enviado com sucesso!' })
       setIsDialogOpen(false)
@@ -127,6 +130,11 @@ export default function Materials() {
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao atualizar acesso' })
     }
+  }
+
+  const handleView = (material: Material) => {
+    setSelectedMaterial(material)
+    setIsViewOpen(true)
   }
 
   return (
@@ -210,6 +218,28 @@ export default function Materials() {
           </Dialog>
         )}
       </div>
+
+      {/* View Dialog */}
+      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+        <DialogContent className="max-w-4xl h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>{selectedMaterial?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 h-full bg-muted/20 rounded-md overflow-hidden">
+            {selectedMaterial?.fileType === 'PDF' ? (
+              <iframe
+                src={selectedMaterial.fileUrl}
+                className="w-full h-full"
+                title="PDF Viewer"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                Visualização não disponível para este formato.
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Access Dialog */}
       <Dialog open={isEditAccessOpen} onOpenChange={setIsEditAccessOpen}>
@@ -318,6 +348,7 @@ export default function Materials() {
                   size="icon"
                   title="Visualizar"
                   className="hover:text-primary"
+                  onClick={() => handleView(material)}
                 >
                   <Eye className="h-4 w-4" />
                 </Button>
@@ -326,6 +357,7 @@ export default function Materials() {
                   size="icon"
                   title="Baixar"
                   className="hover:text-primary"
+                  onClick={() => window.open(material.fileUrl, '_blank')}
                 >
                   <Download className="h-4 w-4" />
                 </Button>

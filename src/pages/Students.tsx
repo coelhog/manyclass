@@ -60,9 +60,9 @@ export default function Students() {
     email: '',
     phone: '',
     level: 'A1',
+    password: '',
   })
 
-  // Updated bulk structure to match user story: Name, Group (level/code), Group Name (Class Name)
   const [bulkStudents, setBulkStudents] = useState([
     { name: '', email: '', group: '', groupName: '' },
   ])
@@ -101,14 +101,19 @@ export default function Students() {
       await studentService.create({
         ...newStudent,
         status: 'active',
-        // Use generic avatar
         avatar: `https://img.usecurling.com/i?q=user&color=gray&shape=fill`,
         joinedAt: new Date().toISOString().split('T')[0],
       })
       toast({ title: 'Aluno adicionado com sucesso!' })
       setIsDialogOpen(false)
       loadStudents()
-      setNewStudent({ name: '', email: '', phone: '', level: 'A1' })
+      setNewStudent({
+        name: '',
+        email: '',
+        phone: '',
+        level: 'A1',
+        password: '',
+      })
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao criar aluno' })
     }
@@ -125,22 +130,20 @@ export default function Students() {
     }
 
     try {
-      // 1. Create Students
       const studentsToCreate = validStudents.map((s) => ({
         name: s.name,
         email:
-          s.email || `${s.name.toLowerCase().replace(/\s/g, '.')}@email.com`, // Auto-generate email if missing
+          s.email || `${s.name.toLowerCase().replace(/\s/g, '.')}@email.com`,
         phone: '',
-        level: s.group || 'A1', // Map 'grupo' to level
+        level: s.group || 'A1',
         status: 'active' as const,
-        // Use generic avatar
         avatar: `https://img.usecurling.com/i?q=user&color=gray&shape=fill`,
         joinedAt: new Date().toISOString().split('T')[0],
+        password: 'password123', // Default password for bulk
       }))
 
       const createdStudents = await studentService.createBulk(studentsToCreate)
 
-      // 2. Handle Group Association (Class)
       const classes = await classService.getAllClasses()
       const studentsByGroup = validStudents.reduce(
         (acc, curr, idx) => {
@@ -163,15 +166,17 @@ export default function Students() {
             studentIds: [...existingClass.studentIds, ...studentIds],
           })
         } else {
-          // Create new class if it doesn't exist
           await classService.createClass({
             name: groupName,
-            schedule: 'A definir',
+            days: [],
+            startTime: '09:00',
+            duration: 60,
             status: 'active',
             studentIds: studentIds,
             billingModel: 'per_student',
             price: 0,
             category: 'group',
+            color: 'blue',
           })
         }
       }
@@ -201,6 +206,7 @@ export default function Students() {
             status: 'active' as const,
             avatar: '',
             joinedAt: new Date().toISOString(),
+            password: 'password123',
           },
         ]
         await studentService.createBulk(mockImported)
@@ -417,6 +423,21 @@ export default function Students() {
                     onChange={(e) =>
                       setNewStudent({ ...newStudent, level: e.target.value })
                     }
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="password" className="text-right">
+                    Senha
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    className="col-span-3"
+                    value={newStudent.password}
+                    onChange={(e) =>
+                      setNewStudent({ ...newStudent, password: e.target.value })
+                    }
+                    placeholder="Opcional"
                   />
                 </div>
               </div>

@@ -8,15 +8,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, Mail, Phone, Calendar, BookOpen } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, Calendar, BookOpen, Lock } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageTransition } from '@/components/PageTransition'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useToast } from '@/hooks/use-toast'
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>()
   const [student, setStudent] = useState<Student | null>(null)
   const [classes, setClasses] = useState<ClassGroup[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [newPassword, setNewPassword] = useState('')
+  const { toast } = useToast()
 
   useEffect(() => {
     const loadData = async () => {
@@ -38,6 +43,17 @@ export default function StudentDetail() {
     }
     loadData()
   }, [id])
+
+  const handleUpdatePassword = async () => {
+    if (!student || !newPassword) return
+    try {
+      await studentService.update(student.id, { password: newPassword })
+      toast({ title: 'Senha atualizada com sucesso!' })
+      setNewPassword('')
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Erro ao atualizar senha' })
+    }
+  }
 
   if (isLoading) {
     return (
@@ -75,41 +91,73 @@ export default function StudentDetail() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-1 h-fit">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <Avatar className="h-32 w-32 ring-4 ring-background shadow-md">
-                <AvatarImage src={student.avatar} />
-                <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-            </div>
-            <CardTitle className="text-xl">{student.name}</CardTitle>
-            <div className="flex justify-center gap-2 mt-2">
-              <Badge>{student.level}</Badge>
-              <Badge
-                variant={student.status === 'active' ? 'default' : 'secondary'}
-              >
-                {student.status === 'active' ? 'Ativo' : 'Inativo'}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <span>{student.email}</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors">
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              <span>{student.phone}</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>
-                Desde {new Date(student.joinedAt).toLocaleDateString('pt-BR')}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card className="h-fit">
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <Avatar className="h-32 w-32 ring-4 ring-background shadow-md">
+                  <AvatarImage src={student.avatar} />
+                  <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+              </div>
+              <CardTitle className="text-xl">{student.name}</CardTitle>
+              <div className="flex justify-center gap-2 mt-2">
+                <Badge>{student.level}</Badge>
+                <Badge
+                  variant={
+                    student.status === 'active' ? 'default' : 'secondary'
+                  }
+                >
+                  {student.status === 'active' ? 'Ativo' : 'Inativo'}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <span>{student.email}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                <span>{student.phone}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span>
+                  Desde {new Date(student.joinedAt).toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Lock className="h-4 w-4" /> Gerenciar Acesso
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="password">Nova Senha</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="••••••"
+                  />
+                  <Button
+                    onClick={handleUpdatePassword}
+                    disabled={!newPassword}
+                  >
+                    Salvar
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="md:col-span-2">
           <Tabs defaultValue="classes">

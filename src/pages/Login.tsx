@@ -10,6 +10,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Search, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Link, useNavigate } from 'react-router-dom'
@@ -19,6 +28,8 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoggingIn, setIsLoggingIn] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [isForgotOpen, setIsForgotOpen] = useState(false)
   const { toast } = useToast()
   const navigate = useNavigate()
 
@@ -41,6 +52,19 @@ export default function Login() {
     } finally {
       setIsLoggingIn(false)
     }
+  }
+
+  const handleForgotPassword = () => {
+    if (!forgotEmail) {
+      toast({ variant: 'destructive', title: 'Digite seu email' })
+      return
+    }
+    toast({
+      title: 'Email enviado',
+      description: 'Verifique sua caixa de entrada para redefinir a senha.',
+    })
+    setIsForgotOpen(false)
+    setForgotEmail('')
   }
 
   return (
@@ -74,13 +98,40 @@ export default function Login() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Senha</Label>
-                <Button
-                  variant="link"
-                  className="px-0 font-normal text-xs"
-                  type="button"
-                >
-                  Esqueceu sua senha?
-                </Button>
+                <Dialog open={isForgotOpen} onOpenChange={setIsForgotOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="link"
+                      className="px-0 font-normal text-xs"
+                      type="button"
+                    >
+                      Esqueceu sua senha?
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Redefinir Senha</DialogTitle>
+                      <DialogDescription>
+                        Digite seu email para receber um link de redefinição.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <Label htmlFor="forgot-email">Email</Label>
+                      <Input
+                        id="forgot-email"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="seu@email.com"
+                        className="mt-2"
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleForgotPassword}>
+                        Enviar Link
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
               <Input
                 id="password"

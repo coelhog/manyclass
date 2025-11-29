@@ -3,6 +3,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { mockStudents } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { Button } from '@/components/ui/button'
+import { ExternalLink, Clock, Users } from 'lucide-react'
 
 interface EventCardProps {
   event: CalendarEvent
@@ -22,7 +29,6 @@ const colorClasses: Record<string, string> = {
 
 export function EventCard({ event, onClick, view }: EventCardProps) {
   const students = mockStudents.filter((s) => event.student_ids.includes(s.id))
-  const isTask = event.type === 'task'
   const isClass = event.type === 'class'
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -34,7 +40,7 @@ export function EventCard({ event, onClick, view }: EventCardProps) {
     colorClasses[event.color || 'blue'] ||
     'bg-primary/20 border-primary/30 text-primary-foreground'
 
-  return (
+  const CardContent = (
     <div
       draggable
       onDragStart={handleDragStart}
@@ -103,6 +109,64 @@ export function EventCard({ event, onClick, view }: EventCardProps) {
         </div>
       )}
     </div>
+  )
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>{CardContent}</PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="start">
+        <div className={`h-2 w-full ${colorClass.split(' ')[0]}`} />
+        <div className="p-4 space-y-3">
+          <div>
+            <h4 className="font-semibold text-lg leading-none">
+              {event.title}
+            </h4>
+            <p className="text-sm text-muted-foreground mt-1">
+              {event.description || 'Sem descrição'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span>
+              {format(new Date(event.start_time), 'HH:mm')} -{' '}
+              {format(new Date(event.end_time), 'HH:mm')}
+            </span>
+          </div>
+          {event.link && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start"
+              asChild
+            >
+              <a href={event.link} target="_blank" rel="noreferrer">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Entrar na Aula
+              </a>
+            </Button>
+          )}
+          {students.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Users className="h-4 w-4" />
+                Participantes ({students.length})
+              </div>
+              <div className="flex flex-col gap-2 max-h-[100px] overflow-y-auto">
+                {students.map((student) => (
+                  <div key={student.id} className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={student.avatar} />
+                      <AvatarFallback>{student.name[0]}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm">{student.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 

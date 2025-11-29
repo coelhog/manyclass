@@ -32,6 +32,7 @@ export interface Student {
   level: string
   joinedAt: string
   subscriptionId?: string
+  password?: string // Mock password for management
 }
 
 export interface Subscription {
@@ -48,7 +49,10 @@ export interface Subscription {
 export interface ClassGroup {
   id: string
   name: string
-  schedule: string
+  schedule: string // Display string (e.g., "Seg/Qua 19:00")
+  days: number[] // 0-6 (Sun-Sat)
+  startTime: string // HH:mm
+  duration: number // minutes
   status: 'active' | 'archived'
   studentIds: string[]
   billingModel: BillingModel
@@ -56,6 +60,7 @@ export interface ClassGroup {
   category: ClassCategory
   studentLimit?: number
   customStudentPrices?: Record<string, number> // studentId -> price
+  color?: string
 }
 
 export type TaskType = 'text' | 'multiple-choice' | 'file-upload'
@@ -113,6 +118,7 @@ export interface CalendarEvent {
   student_ids: string[]
   color?: string
   classId?: string
+  link?: string
 }
 
 export interface CreateEventDTO {
@@ -147,6 +153,7 @@ export interface Material {
   fileType: string
   uploadedAt: string
   studentIds: string[] // List of students who have access
+  teacherId?: string
 }
 
 export type MessageType =

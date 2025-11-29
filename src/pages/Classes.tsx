@@ -34,6 +34,26 @@ import { useToast } from '@/hooks/use-toast'
 import { PageTransition } from '@/components/PageTransition'
 import { CardGridSkeleton } from '@/components/skeletons'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+
+const DAYS = [
+  { label: 'Dom', value: 0 },
+  { label: 'Seg', value: 1 },
+  { label: 'Ter', value: 2 },
+  { label: 'Qua', value: 3 },
+  { label: 'Qui', value: 4 },
+  { label: 'Sex', value: 5 },
+  { label: 'Sáb', value: 6 },
+]
+
+const COLORS = [
+  { label: 'Azul', value: 'blue', class: 'bg-blue-500' },
+  { label: 'Verde', value: 'green', class: 'bg-green-500' },
+  { label: 'Vermelho', value: 'red', class: 'bg-red-500' },
+  { label: 'Amarelo', value: 'yellow', class: 'bg-yellow-500' },
+  { label: 'Roxo', value: 'purple', class: 'bg-purple-500' },
+  { label: 'Laranja', value: 'orange', class: 'bg-orange-500' },
+]
 
 export default function Classes() {
   const [classes, setClasses] = useState<ClassGroup[]>([])
@@ -42,18 +62,24 @@ export default function Classes() {
   const [activeTab, setActiveTab] = useState<string>('individual')
   const [newClass, setNewClass] = useState<{
     name: string
-    schedule: string
+    days: number[]
+    startTime: string
+    duration: number
     billingModel: BillingModel
     price: number
     category: ClassCategory
     studentLimit?: number
+    color: string
   }>({
     name: '',
-    schedule: '',
+    days: [],
+    startTime: '09:00',
+    duration: 60,
     billingModel: 'per_student',
     price: 0,
     category: 'individual',
     studentLimit: 1,
+    color: 'blue',
   })
   const { toast } = useToast()
 
@@ -86,9 +112,21 @@ export default function Classes() {
       toast({ variant: 'destructive', title: 'Nome da turma é obrigatório' })
       return
     }
+    if (newClass.days.length === 0) {
+      toast({ variant: 'destructive', title: 'Selecione pelo menos um dia' })
+      return
+    }
+
+    const daysStr = newClass.days
+      .sort()
+      .map((d) => DAYS.find((day) => day.value === d)?.label)
+      .join('/')
+    const scheduleStr = `${daysStr} ${newClass.startTime}`
+
     try {
       await classService.createClass({
         ...newClass,
+        schedule: scheduleStr,
         status: 'active',
         studentIds: [],
       })
@@ -97,11 +135,14 @@ export default function Classes() {
       loadClasses()
       setNewClass({
         name: '',
-        schedule: '',
+        days: [],
+        startTime: '09:00',
+        duration: 60,
         billingModel: 'per_student',
         price: 0,
         category: 'individual',
         studentLimit: 1,
+        color: 'blue',
       })
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao criar turma' })
@@ -120,11 +161,11 @@ export default function Classes() {
               <Plus className="mr-2 h-4 w-4" /> Criar Turma
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Nova Turma</DialogTitle>
               <DialogDescription>
-                Crie uma nova turma e defina o modelo de cobrança.
+                Configure os detalhes da nova turma.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -188,19 +229,64 @@ export default function Classes() {
               )}
 
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="schedule" className="text-right">
+                <Label className="text-right">Dias</Label>
+                <div className="col-span-3">
+                  <ToggleGroup
+                    type="multiple"
+                    variant="outline"
+                    value={newClass.days.map(String)}
+                    onValueChange={(val) =>
+                      setNewClass({
+                        ...newClass,
+                        days: val.map(Number),
+                      })
+                    }
+                    className="justify-start"
+                  >
+                    {DAYS.map((day) => (
+                      <ToggleGroupItem
+                        key={day.value}
+                        value={String(day.value)}
+                        className="h-8 w-8 p-0"
+                      >
+                        {day.label.charAt(0)}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="time" className="text-right">
                   Horário
                 </Label>
-                <Input
-                  id="schedule"
-                  className="col-span-3"
-                  placeholder="Ex: Seg/Qua 19:00"
-                  value={newClass.schedule}
-                  onChange={(e) =>
-                    setNewClass({ ...newClass, schedule: e.target.value })
-                  }
-                />
+                <div className="col-span-3 flex gap-2">
+                  <Input
+                    id="time"
+                    type="time"
+                    value={newClass.startTime}
+                    onChange={(e) =>
+                      setNewClass({ ...newClass, startTime: e.target.value })
+                    }
+                    className="flex-1"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={newClass.duration}
+                      onChange={(e) =>
+                        setNewClass({
+                          ...newClass,
+                          duration: Number(e.target.value),
+                        })
+                      }
+                      className="w-20"
+                    />
+                    <span className="text-sm text-muted-foreground">min</span>
+                  </div>
+                </div>
               </div>
+
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="billing" className="text-right">
                   Cobrança
@@ -240,6 +326,30 @@ export default function Classes() {
                     setNewClass({ ...newClass, price: Number(e.target.value) })
                   }
                 />
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Cor</Label>
+                <Select
+                  value={newClass.color}
+                  onValueChange={(v) => setNewClass({ ...newClass, color: v })}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COLORS.map((color) => (
+                      <SelectItem key={color.value} value={color.value}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-3 h-3 rounded-full ${color.class}`}
+                          />
+                          {color.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>
@@ -312,7 +422,7 @@ export default function Classes() {
                   </div>
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Clock className="mr-2 h-4 w-4" />
-                    {cls.schedule}
+                    {cls.schedule} ({cls.duration} min)
                   </div>
                   <div className="flex items-center text-sm text-muted-foreground">
                     <CreditCard className="mr-2 h-4 w-4" />

@@ -13,6 +13,7 @@ const mockMaterials: Material[] = [
     fileType: 'PDF',
     uploadedAt: '2024-05-01T10:00:00Z',
     studentIds: ['1', '2'],
+    teacherId: '1',
   },
   {
     id: '2',
@@ -22,6 +23,7 @@ const mockMaterials: Material[] = [
     fileType: 'DOCX',
     uploadedAt: '2024-05-10T14:30:00Z',
     studentIds: ['2'],
+    teacherId: '1',
   },
 ]
 
@@ -71,5 +73,10 @@ export const materialService = {
   getByStudentId: async (studentId: string): Promise<Material[]> => {
     const materials = await materialService.getAll()
     return materials.filter((m) => m.studentIds.includes(studentId))
+  },
+
+  getByTeacherId: async (teacherId: string): Promise<Material[]> => {
+    const materials = await materialService.getAll()
+    return materials.filter((m) => m.teacherId === teacherId)
   },
 }
