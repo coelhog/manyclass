@@ -49,6 +49,18 @@ export const materialService = {
     return newMaterial
   },
 
+  update: async (id: string, data: Partial<Material>): Promise<Material> => {
+    await delay(300)
+    const materials = await materialService.getAll()
+    const index = materials.findIndex((m) => m.id === id)
+    if (index === -1) throw new Error('Material not found')
+
+    const updated = { ...materials[index], ...data }
+    materials[index] = updated
+    localStorage.setItem(MATERIALS_KEY, JSON.stringify(materials))
+    return updated
+  },
+
   delete: async (id: string): Promise<void> => {
     await delay(300)
     const materials = await materialService.getAll()

@@ -3,8 +3,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Search, Bell, Loader2, CreditCard } from 'lucide-react'
+import { Bell, Loader2, CreditCard } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,13 +42,6 @@ export default function Layout() {
         <header className="h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-between px-4 sticky top-0 z-10 shadow-sm">
           <div className="flex items-center gap-4">
             {!isMobile && <SidebarTrigger />}
-            <div className="hidden md:flex relative w-64 transition-all focus-within:w-80">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar..."
-                className="pl-8 h-9 bg-muted/50 focus:bg-background transition-colors"
-              />
-            </div>
             {isMobile && (
               <span className="font-bold text-lg text-primary">
                 SmartClassHub

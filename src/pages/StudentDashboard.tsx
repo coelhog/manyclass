@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { taskService } from '@/services/taskService'
 import { studentService } from '@/services/studentService'
-import { Task, Subscription } from '@/types'
+import { Task, Subscription, Payment } from '@/types'
 import {
   Card,
   CardContent,
@@ -12,7 +12,13 @@ import {
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Calendar, CheckCircle2, Clock, ArrowRight } from 'lucide-react'
+import {
+  Calendar,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+  AlertTriangle,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { format, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -26,6 +32,7 @@ export default function StudentDashboard() {
   const [subscription, setSubscription] = useState<Subscription | undefined>(
     undefined,
   )
+  const [payments, setPayments] = useState<Payment[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -33,12 +40,14 @@ export default function StudentDashboard() {
       if (!user) return
       setIsLoading(true)
       try {
-        const [allTasks, sub] = await Promise.all([
+        const [allTasks, sub, allPayments] = await Promise.all([
           taskService.getAllTasks(),
           studentService.getSubscriptionByStudentId(user.id),
+          studentService.getAllPayments(),
         ])
         setTasks(allTasks)
         setSubscription(sub)
+        setPayments(allPayments.filter((p) => p.studentId === user.id))
       } finally {
         setIsLoading(false)
       }
@@ -59,6 +68,12 @@ export default function StudentDashboard() {
   const daysRemaining = subscription
     ? differenceInDays(new Date(subscription.nextBillingDate), new Date())
     : undefined
+
+  // Check for overdue payments or expired subscription
+  const hasOverduePayments = payments.some((p) => p.status === 'overdue')
+  const isSubscriptionExpired =
+    subscription?.status === 'expired' || subscription?.status === 'past_due'
+  const isAccessRestricted = hasOverduePayments || isSubscriptionExpired
 
   return (
     <PageTransition className="space-y-8">
@@ -81,6 +96,19 @@ export default function StudentDashboard() {
           status={subscription.status}
           daysRemaining={daysRemaining}
         />
+      )}
+
+      {isAccessRestricted && (
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex items-center gap-3 text-destructive">
+          <AlertTriangle className="h-5 w-5" />
+          <div>
+            <p className="font-semibold">Acesso Restrito</p>
+            <p className="text-sm">
+              Você possui pendências financeiras. O acesso às aulas ao vivo foi
+              temporariamente suspenso.
+            </p>
+          </div>
+        </div>
       )}
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -116,8 +144,16 @@ export default function StudentDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-semibold">Inglês - B1</div>
-            <p className="text-xs text-muted-foreground">Hoje, 19:00</p>
+            {isAccessRestricted ? (
+              <div className="text-sm text-muted-foreground italic">
+                Link indisponível devido a pendências.
+              </div>
+            ) : (
+              <>
+                <div className="text-lg font-semibold">Inglês - B1</div>
+                <p className="text-xs text-muted-foreground">Hoje, 19:00</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

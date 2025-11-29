@@ -89,7 +89,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name,
           email,
           role,
-          avatar: `https://img.usecurling.com/ppl/medium?gender=${Math.random() > 0.5 ? 'male' : 'female'}`,
+          // Use generic default icon instead of random person photo
+          avatar: `https://img.usecurling.com/i?q=user&color=gray&shape=fill`,
           plan_id: role === 'teacher' ? 'basic' : undefined,
         }
         setUser(newUser)

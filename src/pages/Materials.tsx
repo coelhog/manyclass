@@ -7,7 +7,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Plus, Search, FileText, Download, Eye, Trash2 } from 'lucide-react'
+import {
+  Plus,
+  Search,
+  FileText,
+  Download,
+  Eye,
+  Trash2,
+  Users,
+} from 'lucide-react'
 import { PageTransition } from '@/components/PageTransition'
 import { CardGridSkeleton } from '@/components/skeletons'
 import { useState, useEffect, useCallback } from 'react'
@@ -34,6 +42,12 @@ export default function Materials() {
   const [students, setStudents] = useState<Student[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isEditAccessOpen, setIsEditAccessOpen] = useState(false)
+  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(
+    null,
+  )
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
+
   const [newMaterial, setNewMaterial] = useState({
     title: '',
     description: '',
@@ -92,6 +106,26 @@ export default function Materials() {
     if (confirm('Excluir este material?')) {
       await materialService.delete(id)
       loadData()
+    }
+  }
+
+  const openEditAccess = (material: Material) => {
+    setSelectedMaterial(material)
+    setSelectedStudentIds(material.studentIds)
+    setIsEditAccessOpen(true)
+  }
+
+  const handleSaveAccess = async () => {
+    if (!selectedMaterial) return
+    try {
+      await materialService.update(selectedMaterial.id, {
+        studentIds: selectedStudentIds,
+      })
+      toast({ title: 'Acesso atualizado com sucesso!' })
+      setIsEditAccessOpen(false)
+      loadData()
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Erro ao atualizar acesso' })
     }
   }
 
@@ -177,6 +211,50 @@ export default function Materials() {
         )}
       </div>
 
+      {/* Edit Access Dialog */}
+      <Dialog open={isEditAccessOpen} onOpenChange={setIsEditAccessOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gerenciar Acesso</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Selecione os alunos com acesso:</Label>
+              <ScrollArea className="h-[250px] border rounded-md p-2">
+                {students.map((student) => (
+                  <div
+                    key={student.id}
+                    className="flex items-center space-x-2 py-1"
+                  >
+                    <Checkbox
+                      id={`edit-student-${student.id}`}
+                      checked={selectedStudentIds.includes(student.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked)
+                          setSelectedStudentIds((prev) => [...prev, student.id])
+                        else
+                          setSelectedStudentIds((prev) =>
+                            prev.filter((id) => id !== student.id),
+                          )
+                      }}
+                    />
+                    <Label
+                      htmlFor={`edit-student-${student.id}`}
+                      className="cursor-pointer"
+                    >
+                      {student.name}
+                    </Label>
+                  </div>
+                ))}
+              </ScrollArea>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSaveAccess}>Salvar Alterações</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -198,14 +276,26 @@ export default function Materials() {
                   <FileText className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
                 {user?.role === 'teacher' && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-destructive"
-                    onClick={() => handleDelete(material.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-muted-foreground hover:text-primary"
+                      onClick={() => openEditAccess(material)}
+                      title="Gerenciar Acesso"
+                    >
+                      <Users className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-destructive"
+                      onClick={() => handleDelete(material.id)}
+                      title="Excluir"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 )}
               </CardHeader>
               <CardContent className="pt-4">
@@ -218,7 +308,7 @@ export default function Materials() {
                 </p>
                 {user?.role === 'teacher' && (
                   <p className="text-xs text-muted-foreground mt-2">
-                    Enviado para: {material.studentIds.length} alunos
+                    Acesso: {material.studentIds.length} alunos
                   </p>
                 )}
               </CardContent>

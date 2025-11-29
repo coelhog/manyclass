@@ -8,6 +8,8 @@ export type BillingCycle = 'monthly' | 'quarterly'
 
 export type BillingModel = 'per_student' | 'per_class'
 
+export type ClassCategory = 'individual' | 'group' | 'class'
+
 export interface User {
   id: string
   name: string
@@ -49,6 +51,7 @@ export interface ClassGroup {
   studentIds: string[]
   billingModel: BillingModel
   price: number
+  category: ClassCategory
 }
 
 export type TaskType = 'text' | 'multiple-choice' | 'file-upload'

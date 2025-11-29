@@ -105,8 +105,38 @@ export const classService = {
   getEvents: async (): Promise<CalendarEvent[]> => {
     await delay(300)
     try {
+      let events: CalendarEvent[] = []
       const stored = localStorage.getItem(EVENTS_KEY)
-      if (stored) return JSON.parse(stored)
+      if (stored) {
+        events = JSON.parse(stored)
+      }
+
+      // Simulate "Automatic release of calendar slots for group students with overdue payments"
+      // We filter out students who are overdue from the event's student list
+      // In a real backend, this would be done by a job or query
+      const payments = await studentService.getAllPayments()
+      const overdueStudentIds = payments
+        .filter((p) => p.status === 'overdue' && p.studentId)
+        .map((p) => p.studentId!)
+
+      // Also check subscriptions
+      // This is a simplified check. In reality we'd check all students.
+      // For now, let's just use the payments check as a proxy for "overdue"
+
+      const processedEvents = events.map((event) => {
+        // If it's a group class (more than 1 student or type class), filter overdue
+        if (event.student_ids.length > 1 || event.type === 'class') {
+          return {
+            ...event,
+            student_ids: event.student_ids.filter(
+              (sid) => !overdueStudentIds.includes(sid),
+            ),
+          }
+        }
+        return event
+      })
+
+      return processedEvents
     } catch (e) {
       console.error('Error loading events', e)
     }

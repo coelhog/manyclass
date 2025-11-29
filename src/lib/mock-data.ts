@@ -98,6 +98,7 @@ export const mockClasses: ClassGroup[] = [
     studentIds: ['1', '2'],
     billingModel: 'per_student',
     price: 350.0,
+    category: 'group',
   },
   {
     id: '2',
@@ -107,6 +108,7 @@ export const mockClasses: ClassGroup[] = [
     studentIds: ['2'],
     billingModel: 'per_student',
     price: 350.0,
+    category: 'individual',
   },
   {
     id: '3',
@@ -116,6 +118,7 @@ export const mockClasses: ClassGroup[] = [
     studentIds: ['3'],
     billingModel: 'per_class',
     price: 1200.0,
+    category: 'class',
   },
 ]
 

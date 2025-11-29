@@ -12,7 +12,7 @@ import {
 import { Plus, Search, Users, Clock, CreditCard } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { classService } from '@/services/classService'
-import { ClassGroup, BillingModel } from '@/types'
+import { ClassGroup, BillingModel, ClassCategory } from '@/types'
 import { Link } from 'react-router-dom'
 import {
   Dialog,
@@ -34,21 +34,25 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { PageTransition } from '@/components/PageTransition'
 import { CardGridSkeleton } from '@/components/skeletons'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function Classes() {
   const [classes, setClasses] = useState<ClassGroup[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<string>('all')
   const [newClass, setNewClass] = useState<{
     name: string
     schedule: string
     billingModel: BillingModel
     price: number
+    category: ClassCategory
   }>({
     name: '',
     schedule: '',
     billingModel: 'per_student',
     price: 0,
+    category: 'group',
   })
   const { toast } = useToast()
 
@@ -98,11 +102,17 @@ export default function Classes() {
         schedule: '',
         billingModel: 'per_student',
         price: 0,
+        category: 'group',
       })
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao criar turma' })
     }
   }
+
+  const filteredClasses =
+    activeTab === 'all'
+      ? classes
+      : classes.filter((c) => c.category === activeTab)
 
   return (
     <PageTransition className="space-y-8">
@@ -134,6 +144,32 @@ export default function Classes() {
                     setNewClass({ ...newClass, name: e.target.value })
                   }
                 />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="category" className="text-right">
+                  Categoria
+                </Label>
+                <Select
+                  value={newClass.category}
+                  onValueChange={(v) =>
+                    setNewClass({
+                      ...newClass,
+                      category: v as ClassCategory,
+                      // Auto-set billing model based on category for convenience
+                      billingModel:
+                        v === 'individual' ? 'per_student' : 'per_student',
+                    })
+                  }
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="individual">Aluno Individual</SelectItem>
+                    <SelectItem value="group">Grupo</SelectItem>
+                    <SelectItem value="class">Turma</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="schedule" className="text-right">
@@ -197,18 +233,34 @@ export default function Classes() {
         </Dialog>
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar turmas..." className="pl-8" />
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Buscar turmas..." className="pl-8" />
+          </div>
         </div>
+
+        <Tabs
+          defaultValue="all"
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
+          <TabsList>
+            <TabsTrigger value="all">Todas</TabsTrigger>
+            <TabsTrigger value="individual">Individuais</TabsTrigger>
+            <TabsTrigger value="group">Grupos</TabsTrigger>
+            <TabsTrigger value="class">Turmas</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {isLoading ? (
         <CardGridSkeleton count={3} />
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {classes.map((cls) => (
+          {filteredClasses.map((cls) => (
             <Card
               key={cls.id}
               className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
@@ -227,7 +279,15 @@ export default function Classes() {
                     {cls.status}
                   </Badge>
                 </div>
-                <CardDescription>ID: {cls.id}</CardDescription>
+                <div className="flex gap-2 mt-1">
+                  <Badge variant="secondary" className="text-xs">
+                    {cls.category === 'individual'
+                      ? 'Individual'
+                      : cls.category === 'group'
+                        ? 'Grupo'
+                        : 'Turma'}
+                  </Badge>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -258,9 +318,9 @@ export default function Classes() {
               </CardFooter>
             </Card>
           ))}
-          {classes.length === 0 && (
+          {filteredClasses.length === 0 && (
             <div className="col-span-full text-center py-10 text-muted-foreground">
-              Nenhuma turma encontrada.
+              Nenhuma turma encontrada nesta categoria.
             </div>
           )}
         </div>

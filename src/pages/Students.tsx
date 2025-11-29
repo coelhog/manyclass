@@ -101,7 +101,8 @@ export default function Students() {
       await studentService.create({
         ...newStudent,
         status: 'active',
-        avatar: `https://img.usecurling.com/ppl/thumbnail?gender=male&seed=${Math.random()}`,
+        // Use generic avatar
+        avatar: `https://img.usecurling.com/i?q=user&color=gray&shape=fill`,
         joinedAt: new Date().toISOString().split('T')[0],
       })
       toast({ title: 'Aluno adicionado com sucesso!' })
@@ -132,7 +133,8 @@ export default function Students() {
         phone: '',
         level: s.group || 'A1', // Map 'grupo' to level
         status: 'active' as const,
-        avatar: `https://img.usecurling.com/ppl/thumbnail?gender=male&seed=${Math.random()}`,
+        // Use generic avatar
+        avatar: `https://img.usecurling.com/i?q=user&color=gray&shape=fill`,
         joinedAt: new Date().toISOString().split('T')[0],
       }))
 
@@ -169,6 +171,7 @@ export default function Students() {
             studentIds: studentIds,
             billingModel: 'per_student',
             price: 0,
+            category: 'group',
           })
         }
       }

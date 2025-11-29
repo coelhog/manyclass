@@ -34,6 +34,10 @@ export const studentService = {
     const newStudent = {
       ...student,
       id: Math.random().toString(36).substr(2, 9),
+      // Ensure generic avatar if not provided
+      avatar:
+        student.avatar ||
+        `https://img.usecurling.com/i?q=user&color=gray&shape=fill`,
     }
     const updated = [...students, newStudent]
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
@@ -48,6 +52,9 @@ export const studentService = {
     const newStudents = studentsData.map((s) => ({
       ...s,
       id: Math.random().toString(36).substr(2, 9),
+      // Ensure generic avatar if not provided
+      avatar:
+        s.avatar || `https://img.usecurling.com/i?q=user&color=gray&shape=fill`,
     }))
     const updated = [...students, ...newStudents]
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
