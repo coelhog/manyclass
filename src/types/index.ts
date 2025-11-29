@@ -18,6 +18,8 @@ export interface User {
   avatar: string
   plan_id?: PlanType // Only for teachers
   stripeCustomerId?: string
+  phone?: string
+  bio?: string
 }
 
 export interface Student {
@@ -61,6 +63,12 @@ export interface TaskOption {
   text: string
 }
 
+export interface TaskTag {
+  id: string
+  label: string
+  color: string // e.g., 'red', 'blue', 'green'
+}
+
 export interface Task {
   id: string
   title: string
@@ -70,6 +78,7 @@ export interface Task {
   dueDate: string
   options?: TaskOption[] // For multiple choice
   status: 'open' | 'closed'
+  tags?: TaskTag[]
 }
 
 export interface TaskSubmission {

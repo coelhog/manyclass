@@ -30,6 +30,9 @@ import AdminLogin from './pages/admin/AdminLogin'
 import AdminLayout from './pages/admin/AdminLayout'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import TeachersList from './pages/admin/TeachersList'
+import TeacherEdit from './pages/admin/TeacherEdit'
+import AdminMetrics from './pages/admin/AdminMetrics'
+import AdminSettings from './pages/admin/AdminSettings'
 
 const App = () => (
   <BrowserRouter
@@ -51,6 +54,9 @@ const App = () => (
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="teachers" element={<TeachersList />} />
+              <Route path="teachers/:id" element={<TeacherEdit />} />
+              <Route path="metrics" element={<AdminMetrics />} />
+              <Route path="settings" element={<AdminSettings />} />
               <Route path="*" element={<NotFound />} />
             </Route>
 

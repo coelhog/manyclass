@@ -6,13 +6,24 @@ const SUBMISSIONS_KEY = 'smartclass_submissions'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+// Enhance mock tasks with tags
+const enhancedMockTasks: Task[] = mockTasks.map((task) => ({
+  ...task,
+  tags:
+    task.id === '1'
+      ? [{ id: 't1', label: 'Urgente', color: 'red' }]
+      : task.id === '2'
+        ? [{ id: 't2', label: 'Revisão', color: 'blue' }]
+        : [],
+}))
+
 export const taskService = {
   getAllTasks: async (): Promise<Task[]> => {
     await delay(500)
     const stored = localStorage.getItem(TASKS_KEY)
     if (stored) return JSON.parse(stored)
-    localStorage.setItem(TASKS_KEY, JSON.stringify(mockTasks))
-    return mockTasks
+    localStorage.setItem(TASKS_KEY, JSON.stringify(enhancedMockTasks))
+    return enhancedMockTasks
   },
 
   getTaskById: async (id: string): Promise<Task | undefined> => {
@@ -27,6 +38,18 @@ export const taskService = {
     const updated = [...tasks, newTask]
     localStorage.setItem(TASKS_KEY, JSON.stringify(updated))
     return newTask
+  },
+
+  updateTask: async (id: string, updates: Partial<Task>): Promise<Task> => {
+    await delay(300)
+    const tasks = await taskService.getAllTasks()
+    const index = tasks.findIndex((t) => t.id === id)
+    if (index === -1) throw new Error('Task not found')
+
+    const updated = { ...tasks[index], ...updates }
+    tasks[index] = updated
+    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
+    return updated
   },
 
   // Submissions

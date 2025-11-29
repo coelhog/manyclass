@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import {
   Table,
   TableBody,
@@ -15,37 +16,32 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-
-const teachers = [
-  {
-    id: '1',
-    name: 'Ana Silva',
-    email: 'ana.silva@smartclass.com',
-    plan: 'Premium',
-    students: 24,
-    status: 'active',
-  },
-  {
-    id: '2',
-    name: 'Roberto Carlos',
-    email: 'roberto@email.com',
-    plan: 'Basic',
-    students: 5,
-    status: 'active',
-  },
-  {
-    id: '3',
-    name: 'Julia Roberts',
-    email: 'julia@email.com',
-    plan: 'Intermediate',
-    students: 12,
-    status: 'pending',
-  },
-]
+import { teacherService } from '@/services/teacherService'
+import { User } from '@/types'
+import { Link } from 'react-router-dom'
+import { TableSkeleton } from '@/components/skeletons'
 
 export default function TeachersList() {
+  const [teachers, setTeachers] = useState<User[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const loadTeachers = async () => {
+      setIsLoading(true)
+      try {
+        const data = await teacherService.getAll()
+        setTeachers(data)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadTeachers()
+  }, [])
+
+  if (isLoading) return <TableSkeleton columns={5} rows={5} />
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Professores</h2>
         <Button>Adicionar Professor</Button>
@@ -58,8 +54,7 @@ export default function TeachersList() {
               <TableHead>Nome</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Plano</TableHead>
-              <TableHead>Alunos</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Telefone</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -72,26 +67,20 @@ export default function TeachersList() {
                   <Badge
                     variant="outline"
                     className={
-                      teacher.plan === 'Premium'
+                      teacher.plan_id === 'premium'
                         ? 'bg-purple-100 text-purple-800 border-purple-200'
-                        : teacher.plan === 'Intermediate'
+                        : teacher.plan_id === 'intermediate'
                           ? 'bg-blue-100 text-blue-800 border-blue-200'
                           : ''
                     }
                   >
-                    {teacher.plan}
+                    {teacher.plan_id
+                      ? teacher.plan_id.charAt(0).toUpperCase() +
+                        teacher.plan_id.slice(1)
+                      : 'N/A'}
                   </Badge>
                 </TableCell>
-                <TableCell>{teacher.students}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      teacher.status === 'active' ? 'default' : 'secondary'
-                    }
-                  >
-                    {teacher.status}
-                  </Badge>
-                </TableCell>
+                <TableCell>{teacher.phone || '-'}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -101,8 +90,10 @@ export default function TeachersList() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Edit className="mr-2 h-4 w-4" /> Editar
+                      <DropdownMenuItem asChild>
+                        <Link to={`/admin/teachers/${teacher.id}`}>
+                          <Edit className="mr-2 h-4 w-4" /> Editar
+                        </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem className="text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" /> Excluir
