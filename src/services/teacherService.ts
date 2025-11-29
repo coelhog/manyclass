@@ -1,6 +1,6 @@
 import { User } from '@/types'
 
-const TEACHERS_KEY = 'smartclass_teachers'
+const TEACHERS_KEY = 'manyclass_teachers'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

@@ -6,9 +6,10 @@ import {
 } from '@/types'
 import { mockClasses } from '@/lib/mock-data'
 import { studentService } from './studentService'
+import { taskService } from './taskService'
 
-const CLASSES_KEY = 'smartclass_classes'
-const EVENTS_KEY = 'smartclass_events'
+const CLASSES_KEY = 'manyclass_classes'
+const EVENTS_KEY = 'manyclass_events'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -111,19 +112,30 @@ export const classService = {
         events = JSON.parse(stored)
       }
 
+      // Fetch tasks with due dates and convert to events
+      const tasks = await taskService.getAllTasks()
+      const taskEvents: CalendarEvent[] = tasks
+        .filter((t) => t.dueDate)
+        .map((t) => ({
+          id: t.id,
+          title: t.title,
+          description: t.description,
+          start_time: t.dueDate!,
+          end_time: t.dueDate!, // Tasks are point-in-time or we could add 1 hour
+          type: 'task',
+          student_ids: [], // Tasks might not have direct student mapping here easily without class lookup
+          color: t.color || 'blue',
+        }))
+
+      const allEvents = [...events, ...taskEvents]
+
       // Simulate "Automatic release of calendar slots for group students with overdue payments"
-      // We filter out students who are overdue from the event's student list
-      // In a real backend, this would be done by a job or query
       const payments = await studentService.getAllPayments()
       const overdueStudentIds = payments
         .filter((p) => p.status === 'overdue' && p.studentId)
         .map((p) => p.studentId!)
 
-      // Also check subscriptions
-      // This is a simplified check. In reality we'd check all students.
-      // For now, let's just use the payments check as a proxy for "overdue"
-
-      const processedEvents = events.map((event) => {
+      const processedEvents = allEvents.map((event) => {
         // If it's a group class (more than 1 student or type class), filter overdue
         if (event.student_ids.length > 1 || event.type === 'class') {
           return {
@@ -146,31 +158,41 @@ export const classService = {
   createEvent: async (data: CreateEventDTO): Promise<CalendarEvent> => {
     await delay(300)
     const events = await classService.getEvents()
+    // Filter out tasks from the stored events list to avoid duplication when saving
+    // Actually getEvents returns merged list. We need to read raw events first.
+    const stored = localStorage.getItem(EVENTS_KEY)
+    const rawEvents: CalendarEvent[] = stored ? JSON.parse(stored) : []
+
     const newEvent: CalendarEvent = {
       ...data,
       id: Math.random().toString(36).substr(2, 9),
-      color: 'bg-primary/20 border-primary/30 text-primary-foreground',
+      color:
+        data.color || 'bg-primary/20 border-primary/30 text-primary-foreground',
     }
-    const updated = [...events, newEvent]
+    const updated = [...rawEvents, newEvent]
     localStorage.setItem(EVENTS_KEY, JSON.stringify(updated))
     return newEvent
   },
 
   updateEvent: async (data: UpdateEventDTO): Promise<CalendarEvent> => {
     await delay(300)
-    const events = await classService.getEvents()
-    const index = events.findIndex((e) => e.id === data.id)
-    if (index === -1) throw new Error('Event not found')
-    const updated = { ...events[index], ...data }
-    events[index] = updated
-    localStorage.setItem(EVENTS_KEY, JSON.stringify(events))
+    const stored = localStorage.getItem(EVENTS_KEY)
+    const rawEvents: CalendarEvent[] = stored ? JSON.parse(stored) : []
+
+    const index = rawEvents.findIndex((e) => e.id === data.id)
+    if (index === -1) throw new Error('Event not found') // Could be a task, which we can't update here
+
+    const updated = { ...rawEvents[index], ...data }
+    rawEvents[index] = updated
+    localStorage.setItem(EVENTS_KEY, JSON.stringify(rawEvents))
     return updated
   },
 
   deleteEvent: async (id: string): Promise<void> => {
     await delay(300)
-    const events = await classService.getEvents()
-    const filtered = events.filter((e) => e.id !== id)
+    const stored = localStorage.getItem(EVENTS_KEY)
+    const rawEvents: CalendarEvent[] = stored ? JSON.parse(stored) : []
+    const filtered = rawEvents.filter((e) => e.id !== id)
     localStorage.setItem(EVENTS_KEY, JSON.stringify(filtered))
   },
 }

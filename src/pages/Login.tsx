@@ -29,7 +29,7 @@ export default function Login() {
       await login(email, password)
       toast({
         title: 'Login realizado com sucesso!',
-        description: 'Bem-vindo ao SmartClassHub.',
+        description: 'Bem-vindo ao Manyclass.',
       })
       navigate('/')
     } catch (error) {
@@ -54,7 +54,7 @@ export default function Login() {
               </div>
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">SmartClassHub</CardTitle>
+          <CardTitle className="text-2xl font-bold">Manyclass</CardTitle>
           <CardDescription>Faça login para acessar sua conta</CardDescription>
         </CardHeader>
         <CardContent>

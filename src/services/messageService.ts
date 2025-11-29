@@ -1,6 +1,6 @@
 import { AutomatedMessage } from '@/types'
 
-const MESSAGES_KEY = 'smartclass_messages'
+const MESSAGES_KEY = 'manyclass_messages'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

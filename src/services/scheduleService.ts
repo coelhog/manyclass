@@ -8,7 +8,7 @@ import {
   format,
 } from 'date-fns'
 
-const SCHEDULE_KEY = 'smartclass_schedule'
+const SCHEDULE_KEY = 'manyclass_schedule'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

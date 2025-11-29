@@ -38,7 +38,7 @@ export default function Register() {
       await register(name, email, password, role)
       toast({
         title: 'Conta criada com sucesso!',
-        description: 'Bem-vindo ao SmartClassHub.',
+        description: 'Bem-vindo ao Manyclass.',
       })
       navigate('/')
     } catch (error) {
@@ -64,7 +64,7 @@ export default function Register() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">Criar Conta</CardTitle>
-          <CardDescription>Junte-se ao SmartClassHub</CardDescription>
+          <CardDescription>Junte-se ao Manyclass</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleRegister} className="space-y-4">

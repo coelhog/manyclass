@@ -1,9 +1,9 @@
 import { Student, Subscription, Payment } from '@/types'
 import { mockStudents, mockSubscriptions, mockPayments } from '@/lib/mock-data'
 
-const STORAGE_KEY = 'smartclass_students'
-const SUBSCRIPTIONS_KEY = 'smartclass_subscriptions'
-const PAYMENTS_KEY = 'smartclass_payments'
+const STORAGE_KEY = 'manyclass_students'
+const SUBSCRIPTIONS_KEY = 'manyclass_subscriptions'
+const PAYMENTS_KEY = 'manyclass_payments'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

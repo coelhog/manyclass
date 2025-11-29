@@ -2,7 +2,7 @@ import { Task } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Calendar, MoreHorizontal, Eye } from 'lucide-react'
+import { Calendar, Eye } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -60,12 +60,14 @@ export function TaskKanbanCard({ task, onDragStart }: TaskKanbanCardProps) {
           </div>
         )}
 
-        <div className="flex items-center gap-2 pt-1 border-t mt-2 text-xs text-muted-foreground">
-          <Calendar className="h-3 w-3" />
-          <span>
-            {format(new Date(task.dueDate), 'dd/MM/yyyy', { locale: ptBR })}
-          </span>
-        </div>
+        {task.dueDate && (
+          <div className="flex items-center gap-2 pt-1 border-t mt-2 text-xs text-muted-foreground">
+            <Calendar className="h-3 w-3" />
+            <span>
+              {format(new Date(task.dueDate), 'dd/MM/yyyy', { locale: ptBR })}
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

@@ -1,77 +1,107 @@
-import { Task } from '@/types'
-import { TaskKanbanCard } from './TaskKanbanCard'
+import { useState } from 'react'
+import { Task, TaskColumn } from '@/types'
+import { TaskKanbanColumn } from './TaskKanbanColumn'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Plus } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface TaskKanbanBoardProps {
   tasks: Task[]
-  onTaskMove: (taskId: string, newStatus: 'open' | 'closed') => void
+  columns: TaskColumn[]
+  onTaskMove: (taskId: string, newColumnId: string) => void
+  onColumnsChange: (columns: TaskColumn[]) => void
 }
 
-export function TaskKanbanBoard({ tasks, onTaskMove }: TaskKanbanBoardProps) {
-  const columns = [
-    { id: 'open', title: 'Abertas', status: 'open' as const },
-    { id: 'closed', title: 'Fechadas', status: 'closed' as const },
-  ]
+export function TaskKanbanBoard({
+  tasks,
+  columns,
+  onTaskMove,
+  onColumnsChange,
+}: TaskKanbanBoardProps) {
+  const [isAddColumnOpen, setIsAddColumnOpen] = useState(false)
+  const [newColumnTitle, setNewColumnTitle] = useState('')
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
+  const handleAddColumn = () => {
+    if (!newColumnTitle) return
+    const newColumn: TaskColumn = {
+      id: Math.random().toString(36).substr(2, 9),
+      title: newColumnTitle,
+      order: columns.length,
+    }
+    onColumnsChange([...columns, newColumn])
+    setNewColumnTitle('')
+    setIsAddColumnOpen(false)
   }
 
-  const handleDrop = (e: React.DragEvent, status: 'open' | 'closed') => {
-    e.preventDefault()
-    const taskId = e.dataTransfer.getData('text/plain')
-    if (taskId) {
-      onTaskMove(taskId, status)
+  const handleRenameColumn = (columnId: string, newTitle: string) => {
+    const updatedColumns = columns.map((col) =>
+      col.id === columnId ? { ...col, title: newTitle } : col,
+    )
+    onColumnsChange(updatedColumns)
+  }
+
+  const handleDeleteColumn = (columnId: string) => {
+    if (confirm('Tem certeza que deseja excluir esta coluna?')) {
+      const updatedColumns = columns.filter((col) => col.id !== columnId)
+      onColumnsChange(updatedColumns)
     }
   }
 
-  const handleDragStart = (e: React.DragEvent, taskId: string) => {
-    e.dataTransfer.setData('text/plain', taskId)
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
   return (
-    <ScrollArea className="h-full w-full whitespace-nowrap rounded-md border bg-background/50 p-4">
-      <div className="flex gap-4 h-full min-h-[500px]">
-        {columns.map((column) => {
-          const columnTasks = tasks.filter((t) => t.status === column.status)
-          return (
-            <div
+    <div className="h-full flex flex-col">
+      <ScrollArea className="flex-1 w-full whitespace-nowrap rounded-md border bg-background/50 p-4">
+        <div className="flex gap-4 h-full min-h-[500px]">
+          {columns.map((column) => (
+            <TaskKanbanColumn
               key={column.id}
-              className="flex flex-col w-80 shrink-0 h-full max-h-full bg-muted/30 rounded-lg border"
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, column.status)}
+              column={column}
+              tasks={tasks.filter((t) => t.status === column.id)}
+              onTaskMove={onTaskMove}
+              onRename={handleRenameColumn}
+              onDelete={handleDeleteColumn}
+            />
+          ))}
+          <div className="w-80 shrink-0">
+            <Button
+              variant="outline"
+              className="w-full h-12 border-dashed"
+              onClick={() => setIsAddColumnOpen(true)}
             >
-              <div className="p-3 flex items-center justify-between border-b bg-muted/50 rounded-t-lg">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-sm">{column.title}</h3>
-                  <span className="text-xs text-muted-foreground bg-background px-2 py-0.5 rounded-full border">
-                    {columnTasks.length}
-                  </span>
-                </div>
-              </div>
+              <Plus className="mr-2 h-4 w-4" /> Adicionar Coluna
+            </Button>
+          </div>
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
 
-              <div className="flex-1 p-2 overflow-y-auto space-y-2 min-h-[100px]">
-                {columnTasks.map((task) => (
-                  <TaskKanbanCard
-                    key={task.id}
-                    task={task}
-                    onDragStart={handleDragStart}
-                  />
-                ))}
-                {columnTasks.length === 0 && (
-                  <div className="text-center text-xs text-muted-foreground py-4 border-2 border-dashed rounded-md m-2">
-                    Arraste tarefas aqui
-                  </div>
-                )}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
+      <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova Coluna</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Label>Título da Coluna</Label>
+            <Input
+              value={newColumnTitle}
+              onChange={(e) => setNewColumnTitle(e.target.value)}
+              placeholder="Ex: Em Revisão"
+              className="mt-2"
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={handleAddColumn}>Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }

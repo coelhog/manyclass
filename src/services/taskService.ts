@@ -1,21 +1,29 @@
-import { Task, TaskSubmission } from '@/types'
+import { Task, TaskSubmission, TaskColumn } from '@/types'
 import { mockTasks, mockSubmissions } from '@/lib/mock-data'
 
-const TASKS_KEY = 'smartclass_tasks'
-const SUBMISSIONS_KEY = 'smartclass_submissions'
+const TASKS_KEY = 'manyclass_tasks'
+const SUBMISSIONS_KEY = 'manyclass_submissions'
+const TASK_COLUMNS_KEY = 'manyclass_task_columns'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-// Enhance mock tasks with tags
+// Enhance mock tasks with tags and map status to default columns
 const enhancedMockTasks: Task[] = mockTasks.map((task) => ({
   ...task,
+  status: task.status === 'open' ? 'open' : 'closed', // Ensure mapping to default columns
   tags:
     task.id === '1'
       ? [{ id: 't1', label: 'Urgente', color: 'red' }]
       : task.id === '2'
         ? [{ id: 't2', label: 'Revisão', color: 'blue' }]
         : [],
+  color: 'blue', // Default color
 }))
+
+const defaultTaskColumns: TaskColumn[] = [
+  { id: 'open', title: 'Abertas', order: 0 },
+  { id: 'closed', title: 'Fechadas', order: 1 },
+]
 
 export const taskService = {
   getAllTasks: async (): Promise<Task[]> => {
@@ -50,6 +58,20 @@ export const taskService = {
     tasks[index] = updated
     localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
     return updated
+  },
+
+  // Task Columns Management
+  getTaskColumns: async (): Promise<TaskColumn[]> => {
+    await delay(300)
+    const stored = localStorage.getItem(TASK_COLUMNS_KEY)
+    if (stored) return JSON.parse(stored)
+    localStorage.setItem(TASK_COLUMNS_KEY, JSON.stringify(defaultTaskColumns))
+    return defaultTaskColumns
+  },
+
+  saveTaskColumns: async (columns: TaskColumn[]): Promise<void> => {
+    await delay(200)
+    localStorage.setItem(TASK_COLUMNS_KEY, JSON.stringify(columns))
   },
 
   // Submissions

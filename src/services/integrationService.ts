@@ -1,6 +1,6 @@
 import { Integration } from '@/types'
 
-const INTEGRATIONS_KEY = 'smartclass_integrations'
+const INTEGRATIONS_KEY = 'manyclass_integrations'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

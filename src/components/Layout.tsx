@@ -43,9 +43,7 @@ export default function Layout() {
           <div className="flex items-center gap-4">
             {!isMobile && <SidebarTrigger />}
             {isMobile && (
-              <span className="font-bold text-lg text-primary">
-                SmartClassHub
-              </span>
+              <span className="font-bold text-lg text-primary">Manyclass</span>
             )}
           </div>
           <div className="flex items-center gap-4">

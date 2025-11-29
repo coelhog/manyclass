@@ -11,7 +11,6 @@ import {
   CheckSquare,
   MessageSquare,
   Clock,
-  KanbanSquare,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import {
@@ -43,7 +42,6 @@ export function AppSidebar() {
     { title: 'Turmas', url: '/classes', icon: GraduationCap },
     { title: 'Calendário', url: '/calendar', icon: Calendar },
     { title: 'Agenda', url: '/schedule', icon: Clock },
-    { title: 'Quadro Kanban', url: '/kanban', icon: KanbanSquare },
     { title: 'Tarefas', url: '/tasks', icon: CheckSquare },
     { title: 'Materiais', url: '/materials', icon: BookOpen },
     { title: 'Mensagens', url: '/messages', icon: MessageSquare },
@@ -69,7 +67,7 @@ export function AppSidebar() {
           <div className="bg-primary text-primary-foreground p-1 rounded-md">
             <Home className="w-5 h-5" />
           </div>
-          {state === 'expanded' && <span>SmartClassHub</span>}
+          {state === 'expanded' && <span>Manyclass</span>}
         </div>
       </SidebarHeader>
       <SidebarContent>

@@ -1,7 +1,7 @@
 import { KanbanColumn, KanbanTask } from '@/types'
 
-const KANBAN_COLUMNS_KEY = 'smartclass_kanban_columns'
-const KANBAN_TASKS_KEY = 'smartclass_kanban_tasks'
+const KANBAN_COLUMNS_KEY = 'manyclass_kanban_columns'
+const KANBAN_TASKS_KEY = 'manyclass_kanban_tasks'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

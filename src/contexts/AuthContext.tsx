@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('smartclass_user')
+    const storedUser = localStorage.getItem('manyclass_user')
     if (storedUser) {
       setUser(JSON.parse(storedUser))
     }
@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           const newUser = { ...baseUser, email }
           setUser(newUser)
-          localStorage.setItem('smartclass_user', JSON.stringify(newUser))
+          localStorage.setItem('manyclass_user', JSON.stringify(newUser))
           resolve()
         } else {
           reject(new Error('Credenciais inválidas'))
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return new Promise<void>((resolve) => {
       setTimeout(() => {
         setUser(mockStudentUser)
-        localStorage.setItem('smartclass_user', JSON.stringify(mockStudentUser))
+        localStorage.setItem('manyclass_user', JSON.stringify(mockStudentUser))
         resolve()
       }, 500)
     })
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (email && password === 'admin') {
           const adminUser = { ...mockAdminUser, email }
           setUser(adminUser)
-          localStorage.setItem('smartclass_user', JSON.stringify(adminUser))
+          localStorage.setItem('manyclass_user', JSON.stringify(adminUser))
           resolve()
         } else {
           reject(new Error('Credenciais inválidas'))
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           plan_id: role === 'teacher' ? 'basic' : undefined,
         }
         setUser(newUser)
-        localStorage.setItem('smartclass_user', JSON.stringify(newUser))
+        localStorage.setItem('manyclass_user', JSON.stringify(newUser))
         resolve()
       }, 1000)
     })
@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem('smartclass_user')
+    localStorage.removeItem('manyclass_user')
   }
 
   return (

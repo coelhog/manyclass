@@ -69,16 +69,23 @@ export interface TaskTag {
   color: string // e.g., 'red', 'blue', 'green'
 }
 
+export interface TaskColumn {
+  id: string
+  title: string
+  order: number
+}
+
 export interface Task {
   id: string
   title: string
   description: string
   type: TaskType
   classId: string
-  dueDate: string
+  dueDate?: string // Optional now
   options?: TaskOption[] // For multiple choice
-  status: 'open' | 'closed'
+  status: string // Changed to string to support custom columns (columnId)
   tags?: TaskTag[]
+  color?: string // Custom color for calendar
 }
 
 export interface TaskSubmission {
@@ -111,6 +118,7 @@ export interface CreateEventDTO {
   end_time: string
   type: 'class' | 'task' | 'test' | 'meeting'
   student_ids: string[]
+  color?: string
 }
 
 export interface UpdateEventDTO extends Partial<CreateEventDTO> {
@@ -166,7 +174,7 @@ export interface TeacherSchedule {
   bookingLinkEnabled?: boolean
 }
 
-// Kanban Types
+// Kanban Types (Legacy/Teacher Kanban)
 export interface KanbanColumn {
   id: string
   title: string

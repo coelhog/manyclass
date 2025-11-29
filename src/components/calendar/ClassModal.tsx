@@ -34,6 +34,16 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { format } from 'date-fns'
 
+const EVENT_COLORS = [
+  { label: 'Azul', value: 'blue', class: 'bg-blue-500' },
+  { label: 'Verde', value: 'green', class: 'bg-green-500' },
+  { label: 'Vermelho', value: 'red', class: 'bg-red-500' },
+  { label: 'Amarelo', value: 'yellow', class: 'bg-yellow-500' },
+  { label: 'Roxo', value: 'purple', class: 'bg-purple-500' },
+  { label: 'Laranja', value: 'orange', class: 'bg-orange-500' },
+  { label: 'Rosa', value: 'pink', class: 'bg-pink-500' },
+]
+
 const formSchema = z.object({
   title: z.string().min(2, 'Título deve ter pelo menos 2 caracteres'),
   type: z.enum(['class', 'task', 'test'] as [string, ...string[]]),
@@ -41,7 +51,8 @@ const formSchema = z.object({
   startTime: z.string(),
   endTime: z.string(),
   description: z.string().optional(),
-  student_ids: z.array(z.string()).min(1, 'Selecione pelo menos um aluno'),
+  student_ids: z.array(z.string()),
+  color: z.string().optional(),
 })
 
 interface ClassModalProps {
@@ -73,6 +84,7 @@ export function ClassModal({
       endTime: '10:00',
       description: '',
       student_ids: [],
+      color: 'blue',
     },
   })
 
@@ -89,6 +101,7 @@ export function ClassModal({
           endTime: format(end, 'HH:mm'),
           description: event.description || '',
           student_ids: event.student_ids,
+          color: event.color || 'blue',
         })
       } else {
         const dateToUse = initialDate || new Date()
@@ -100,6 +113,7 @@ export function ClassModal({
           endTime: '10:00',
           description: '',
           student_ids: [],
+          color: 'blue',
         })
       }
     }
@@ -118,6 +132,7 @@ export function ClassModal({
         start_time: startDateTime.toISOString(),
         end_time: endDateTime.toISOString(),
         student_ids: values.student_ids,
+        color: values.color,
       })
       onClose()
     } catch (error) {
@@ -191,6 +206,41 @@ export function ClassModal({
               />
               <FormField
                 control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cor</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a cor" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {EVENT_COLORS.map((color) => (
+                          <SelectItem key={color.value} value={color.value}>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`w-3 h-3 rounded-full ${color.class}`}
+                              />
+                              {color.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
                 name="date"
                 render={({ field }) => (
                   <FormItem>
@@ -202,35 +252,34 @@ export function ClassModal({
                   </FormItem>
                 )}
               />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="startTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Início</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="endTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fim</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Início</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fim</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             <FormField

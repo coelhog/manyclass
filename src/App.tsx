@@ -22,7 +22,6 @@ import Settings from './pages/Settings'
 import Integrations from './pages/settings/Integrations'
 import AutomatedMessages from './pages/AutomatedMessages'
 import TeacherSchedule from './pages/TeacherSchedule'
-import TeacherKanban from './pages/TeacherKanban'
 import BookingPage from './pages/BookingPage'
 import NotFound from './pages/NotFound'
 
@@ -76,7 +75,6 @@ const App = () => (
               <Route path="/payments" element={<Payments />} />
               <Route path="/messages" element={<AutomatedMessages />} />
               <Route path="/schedule" element={<TeacherSchedule />} />
-              <Route path="/kanban" element={<TeacherKanban />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/settings/integrations" element={<Integrations />} />
             </Route>

@@ -2,20 +2,6 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Plus, Search, LayoutGrid, List, X } from 'lucide-react'
-import { taskService } from '@/services/taskService'
-import { classService } from '@/services/classService'
-import { Task, ClassGroup, TaskTag } from '@/types'
-import { Link } from 'react-router-dom'
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -35,9 +21,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import { PageTransition } from '@/components/PageTransition'
-import { TableSkeleton } from '@/components/skeletons'
 import { TaskKanbanBoard } from '@/components/tasks/TaskKanbanBoard'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { taskService } from '@/services/taskService'
+import { classService } from '@/services/classService'
+import { Task, ClassGroup, TaskTag, TaskColumn } from '@/types'
+import { Plus, Loader2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
 const TAG_COLORS = [
@@ -47,6 +36,16 @@ const TAG_COLORS = [
   { label: 'Amarelo', value: 'yellow', class: 'bg-yellow-500' },
   { label: 'Roxo', value: 'purple', class: 'bg-purple-500' },
   { label: 'Cinza', value: 'gray', class: 'bg-gray-500' },
+]
+
+const EVENT_COLORS = [
+  { label: 'Azul', value: 'blue', class: 'bg-blue-500' },
+  { label: 'Verde', value: 'green', class: 'bg-green-500' },
+  { label: 'Vermelho', value: 'red', class: 'bg-red-500' },
+  { label: 'Amarelo', value: 'yellow', class: 'bg-yellow-500' },
+  { label: 'Roxo', value: 'purple', class: 'bg-purple-500' },
+  { label: 'Laranja', value: 'orange', class: 'bg-orange-500' },
+  { label: 'Rosa', value: 'pink', class: 'bg-pink-500' },
 ]
 
 const colorMap: Record<string, string> = {
@@ -61,13 +60,14 @@ const colorMap: Record<string, string> = {
 export default function Tasks() {
   const { user } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
+  const [columns, setColumns] = useState<TaskColumn[]>([])
   const [classes, setClasses] = useState<ClassGroup[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban')
   const [newTask, setNewTask] = useState<Partial<Task>>({
     type: 'text',
     tags: [],
+    color: 'blue',
   })
   const [newTag, setNewTag] = useState({ label: '', color: 'gray' })
   const { toast } = useToast()
@@ -79,19 +79,21 @@ export default function Tasks() {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      const [t, c] = await Promise.all([
+      const [t, c, cols] = await Promise.all([
         taskService.getAllTasks(),
         classService.getAllClasses(),
+        taskService.getTaskColumns(),
       ])
       setTasks(t)
       setClasses(c)
+      setColumns(cols.sort((a, b) => a.order - b.order))
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleCreate = async () => {
-    if (!newTask.title || !newTask.classId || !newTask.dueDate) {
+    if (!newTask.title || !newTask.classId) {
       toast({
         variant: 'destructive',
         title: 'Preencha os campos obrigatórios',
@@ -105,14 +107,15 @@ export default function Tasks() {
         type: newTask.type as any,
         classId: newTask.classId,
         dueDate: newTask.dueDate,
-        status: 'open',
+        status: columns[0]?.id || 'open', // Default to first column
         options: newTask.options,
         tags: newTask.tags,
+        color: newTask.color,
       })
       toast({ title: 'Tarefa criada com sucesso!' })
       setIsDialogOpen(false)
       loadData()
-      setNewTask({ type: 'text', tags: [] })
+      setNewTask({ type: 'text', tags: [], color: 'blue' })
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao criar tarefa' })
     }
@@ -136,273 +139,266 @@ export default function Tasks() {
     })
   }
 
-  const handleTaskMove = async (
-    taskId: string,
-    newStatus: 'open' | 'closed',
-  ) => {
+  const handleTaskMove = async (taskId: string, newColumnId: string) => {
     // Optimistic update
     const updatedTasks = tasks.map((t) =>
-      t.id === taskId ? { ...t, status: newStatus } : t,
+      t.id === taskId ? { ...t, status: newColumnId } : t,
     )
     setTasks(updatedTasks)
 
     try {
-      await taskService.updateTask(taskId, { status: newStatus })
+      await taskService.updateTask(taskId, { status: newColumnId })
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao atualizar status' })
       loadData() // Revert
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    return status === 'open' ? (
-      <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
-        Aberta
-      </Badge>
-    ) : (
-      <Badge variant="secondary">Fechada</Badge>
-    )
+  const handleColumnsChange = async (newColumns: TaskColumn[]) => {
+    setColumns(newColumns)
+    try {
+      await taskService.saveTaskColumns(newColumns)
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Erro ao salvar colunas' })
+    }
   }
 
   return (
-    <PageTransition className="space-y-8">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">Tarefas</h1>
-        <div className="flex items-center gap-2">
-          <ToggleGroup
-            type="single"
-            value={viewMode}
-            onValueChange={(v) => v && setViewMode(v as 'kanban' | 'list')}
-            className="border rounded-md p-1"
-          >
-            <ToggleGroupItem value="kanban" aria-label="Kanban View">
-              <LayoutGrid className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="list" aria-label="List View">
-              <List className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
+    <PageTransition className="space-y-8 h-[calc(100vh-100px)] flex flex-col">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Tarefas</h1>
+          <p className="text-muted-foreground">
+            Gerencie as tarefas das suas turmas.
+          </p>
+        </div>
 
-          {user?.role === 'teacher' && (
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="shadow-sm hover:shadow-md transition-all">
-                  <Plus className="mr-2 h-4 w-4" /> Criar Tarefa
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle>Nova Tarefa</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
+        {user?.role === 'teacher' && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="shadow-sm hover:shadow-md transition-all">
+                <Plus className="mr-2 h-4 w-4" /> Criar Tarefa
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Nova Tarefa</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label>Título</Label>
+                  <Input
+                    value={newTask.title || ''}
+                    onChange={(e) =>
+                      setNewTask({ ...newTask, title: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Descrição</Label>
+                  <Textarea
+                    value={newTask.description || ''}
+                    onChange={(e) =>
+                      setNewTask({ ...newTask, description: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label>Título</Label>
-                    <Input
-                      value={newTask.title || ''}
-                      onChange={(e) =>
-                        setNewTask({ ...newTask, title: e.target.value })
+                    <Label>Turma</Label>
+                    <Select
+                      onValueChange={(v) =>
+                        setNewTask({ ...newTask, classId: v })
                       }
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classes.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Descrição</Label>
-                    <Textarea
-                      value={newTask.description || ''}
-                      onChange={(e) =>
-                        setNewTask({ ...newTask, description: e.target.value })
+                    <Label>Tipo</Label>
+                    <Select
+                      defaultValue="text"
+                      onValueChange={(v) =>
+                        setNewTask({ ...newTask, type: v as any })
                       }
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text">Texto</SelectItem>
+                        <SelectItem value="multiple-choice">
+                          Múltipla Escolha
+                        </SelectItem>
+                        <SelectItem value="file-upload">
+                          Upload de Arquivo
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label>Turma</Label>
-                      <Select
-                        onValueChange={(v) =>
-                          setNewTask({ ...newTask, classId: v })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {classes.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Tipo</Label>
-                      <Select
-                        defaultValue="text"
-                        onValueChange={(v) =>
-                          setNewTask({ ...newTask, type: v as any })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="text">Texto</SelectItem>
-                          <SelectItem value="multiple-choice">
-                            Múltipla Escolha
-                          </SelectItem>
-                          <SelectItem value="file-upload">
-                            Upload de Arquivo
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label>Data de Entrega</Label>
+                    <Label>Data de Entrega (Opcional)</Label>
                     <Input
                       type="datetime-local"
                       onChange={(e) =>
                         setNewTask({
                           ...newTask,
-                          dueDate: new Date(e.target.value).toISOString(),
+                          dueDate: e.target.value
+                            ? new Date(e.target.value).toISOString()
+                            : undefined,
                         })
                       }
                     />
+                    <p className="text-[10px] text-muted-foreground">
+                      Se definida, aparecerá no calendário.
+                    </p>
                   </div>
-
                   <div className="grid gap-2">
-                    <Label>Tags</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Nova tag"
-                        value={newTag.label}
-                        onChange={(e) =>
-                          setNewTag({ ...newTag, label: e.target.value })
-                        }
-                        className="flex-1"
-                      />
-                      <Select
-                        value={newTag.color}
-                        onValueChange={(v) =>
-                          setNewTag({ ...newTag, color: v })
-                        }
-                      >
-                        <SelectTrigger className="w-[100px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TAG_COLORS.map((color) => (
-                            <SelectItem key={color.value} value={color.value}>
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className={`w-3 h-3 rounded-full ${color.class}`}
-                                />
-                                {color.label}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={handleAddTag}
-                      >
-                        Adicionar
-                      </Button>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {newTask.tags?.map((tag) => (
-                        <Badge
-                          key={tag.id}
-                          variant="outline"
-                          className={cn(
-                            'flex items-center gap-1',
-                            colorMap[tag.color],
-                          )}
-                        >
-                          {tag.label}
-                          <X
-                            className="h-3 w-3 cursor-pointer"
-                            onClick={() => handleRemoveTag(tag.id)}
-                          />
-                        </Badge>
-                      ))}
-                    </div>
+                    <Label>Cor do Evento</Label>
+                    <Select
+                      value={newTask.color}
+                      onValueChange={(v) =>
+                        setNewTask({ ...newTask, color: v })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {EVENT_COLORS.map((color) => (
+                          <SelectItem key={color.value} value={color.value}>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`w-3 h-3 rounded-full ${color.class}`}
+                              />
+                              {color.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button onClick={handleCreate}>Criar Tarefa</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
-        </div>
+
+                <div className="grid gap-2">
+                  <Label>Tags</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Nova tag"
+                      value={newTag.label}
+                      onChange={(e) =>
+                        setNewTag({ ...newTag, label: e.target.value })
+                      }
+                      className="flex-1"
+                    />
+                    <Select
+                      value={newTag.color}
+                      onValueChange={(v) => setNewTag({ ...newTag, color: v })}
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TAG_COLORS.map((color) => (
+                          <SelectItem key={color.value} value={color.value}>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`w-3 h-3 rounded-full ${color.class}`}
+                              />
+                              {color.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleAddTag}
+                    >
+                      Adicionar
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {newTask.tags?.map((tag) => (
+                      <Badge
+                        key={tag.id}
+                        variant="outline"
+                        className={cn(
+                          'flex items-center gap-1',
+                          colorMap[tag.color],
+                        )}
+                      >
+                        {tag.label}
+                        <XIcon
+                          className="h-3 w-3 cursor-pointer"
+                          onClick={() => handleRemoveTag(tag.id)}
+                        />
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleCreate}>Criar Tarefa</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {isLoading ? (
-        <TableSkeleton columns={5} rows={5} />
-      ) : viewMode === 'kanban' ? (
-        <div className="h-[calc(100vh-250px)]">
-          <TaskKanbanBoard tasks={tasks} onTaskMove={handleTaskMove} />
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="rounded-md border bg-card shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Título</TableHead>
-                <TableHead>Tags</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Data de Entrega</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tasks.map((task) => (
-                <TableRow
-                  key={task.id}
-                  className="group hover:bg-muted/50 transition-colors"
-                >
-                  <TableCell className="font-medium">{task.title}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {task.tags?.map((tag) => (
-                        <Badge
-                          key={tag.id}
-                          variant="outline"
-                          className={cn('text-[10px]', colorMap[tag.color])}
-                        >
-                          {tag.label}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{task.type}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(task.dueDate).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(task.status)}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      asChild
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Link to={`/tasks/${task.id}`}>
-                        {user?.role === 'teacher' ? 'Gerenciar' : 'Ver Tarefa'}
-                      </Link>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="flex-1 min-h-0">
+          <TaskKanbanBoard
+            tasks={tasks}
+            columns={columns}
+            onTaskMove={handleTaskMove}
+            onColumnsChange={handleColumnsChange}
+          />
         </div>
       )}
     </PageTransition>
+  )
+}
+
+function XIcon({
+  className,
+  onClick,
+}: {
+  className?: string
+  onClick?: () => void
+}) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      onClick={onClick}
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
   )
 }

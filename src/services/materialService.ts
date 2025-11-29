@@ -1,6 +1,6 @@
 import { Material } from '@/types'
 
-const MATERIALS_KEY = 'smartclass_materials'
+const MATERIALS_KEY = 'manyclass_materials'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
