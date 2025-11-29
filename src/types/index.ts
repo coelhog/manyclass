@@ -54,6 +54,8 @@ export interface ClassGroup {
   billingModel: BillingModel
   price: number
   category: ClassCategory
+  studentLimit?: number
+  customStudentPrices?: Record<string, number> // studentId -> price
 }
 
 export type TaskType = 'text' | 'multiple-choice' | 'file-upload'
@@ -79,9 +81,10 @@ export interface Task {
   id: string
   title: string
   description: string
-  type: TaskType
-  classId: string
-  dueDate?: string // Optional now
+  type?: TaskType
+  classId?: string
+  studentId?: string
+  dueDate?: string // Optional
   options?: TaskOption[] // For multiple choice
   status: string // Changed to string to support custom columns (columnId)
   tags?: TaskTag[]
@@ -109,6 +112,7 @@ export interface CalendarEvent {
   type: 'class' | 'task' | 'test' | 'meeting'
   student_ids: string[]
   color?: string
+  classId?: string
 }
 
 export interface CreateEventDTO {

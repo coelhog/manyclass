@@ -6,13 +6,14 @@ import { ClassGroup, Student } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, DollarSign } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -20,6 +21,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Label } from '@/components/ui/label'
 import { PageTransition } from '@/components/PageTransition'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Input } from '@/components/ui/input'
 
 export default function ClassDetail() {
   const { id } = useParams<{ id: string }>()
@@ -29,6 +31,10 @@ export default function ClassDetail() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([])
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [editingPrice, setEditingPrice] = useState<{
+    studentId: string
+    price: number
+  } | null>(null)
   const { toast } = useToast()
 
   const loadData = useCallback(async () => {
@@ -53,6 +59,20 @@ export default function ClassDetail() {
 
   const handleAddStudents = async () => {
     if (!classGroup || !id) return
+
+    // Check limits
+    const currentCount = classGroup.studentIds.length
+    const toAddCount = selectedStudents.length
+    const limit = classGroup.studentLimit || 999
+
+    if (currentCount + toAddCount > limit) {
+      toast({
+        variant: 'destructive',
+        title: `Limite de alunos excedido. Máximo: ${limit}`,
+      })
+      return
+    }
+
     try {
       const updatedIds = [
         ...new Set([...classGroup.studentIds, ...selectedStudents]),
@@ -80,6 +100,22 @@ export default function ClassDetail() {
       } catch (error) {
         toast({ variant: 'destructive', title: 'Erro ao remover aluno' })
       }
+    }
+  }
+
+  const handleUpdatePrice = async () => {
+    if (!editingPrice || !id) return
+    try {
+      await classService.updateStudentPrice(
+        id,
+        editingPrice.studentId,
+        editingPrice.price,
+      )
+      toast({ title: 'Preço atualizado!' })
+      setEditingPrice(null)
+      loadData()
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Erro ao atualizar preço' })
     }
   }
 
@@ -121,18 +157,28 @@ export default function ClassDetail() {
           <h1 className="text-3xl font-bold tracking-tight">
             {classGroup.name}
           </h1>
-          <p className="text-muted-foreground">{classGroup.schedule}</p>
+          <p className="text-muted-foreground">
+            {classGroup.schedule} •{' '}
+            {classGroup.category === 'individual' ? 'Individual' : 'Grupo'}
+          </p>
         </div>
       </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Alunos Matriculados ({students.length})</CardTitle>
+          <CardTitle>
+            Alunos Matriculados ({students.length} /{' '}
+            {classGroup.studentLimit || '∞'})
+          </CardTitle>
           <Dialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen}>
             <DialogTrigger asChild>
               <Button
                 size="sm"
                 className="shadow-sm hover:shadow-md transition-all"
+                disabled={
+                  classGroup.studentIds.length >=
+                  (classGroup.studentLimit || 999)
+                }
               >
                 <Plus className="mr-2 h-4 w-4" /> Adicionar Alunos
               </Button>
@@ -196,33 +242,96 @@ export default function ClassDetail() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {students.map((student) => (
-              <div
-                key={student.id}
-                className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 group"
-              >
-                <div className="flex items-center gap-3">
-                  <Avatar className="transition-transform group-hover:scale-110">
-                    <AvatarImage src={student.avatar} />
-                    <AvatarFallback>{student.name[0]}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{student.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {student.email}
-                    </p>
+            {students.map((student) => {
+              const customPrice = classGroup.customStudentPrices?.[student.id]
+              const currentPrice = customPrice ?? classGroup.price
+
+              return (
+                <div
+                  key={student.id}
+                  className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 group"
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar className="transition-transform group-hover:scale-110">
+                      <AvatarImage src={student.avatar} />
+                      <AvatarFallback>{student.name[0]}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{student.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {student.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    {classGroup.category === 'group' && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          R$ {currentPrice.toFixed(2)}
+                        </span>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() =>
+                                setEditingPrice({
+                                  studentId: student.id,
+                                  price: currentPrice,
+                                })
+                              }
+                            >
+                              <DollarSign className="h-3 w-3" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>
+                                Ajustar Valor para {student.name}
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div className="py-4">
+                              <Label>Novo Valor Mensal</Label>
+                              <Input
+                                type="number"
+                                value={editingPrice?.price || 0}
+                                onChange={(e) =>
+                                  setEditingPrice((prev) =>
+                                    prev
+                                      ? {
+                                          ...prev,
+                                          price: Number(e.target.value),
+                                        }
+                                      : null,
+                                  )
+                                }
+                                className="mt-2"
+                              />
+                            </div>
+                            <DialogFooter>
+                              <Button onClick={handleUpdatePrice}>
+                                Salvar
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    )}
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive/90 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleRemoveStudent(student.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive hover:text-destructive/90 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => handleRemoveStudent(student.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+              )
+            })}
             {students.length === 0 && (
               <p className="text-muted-foreground text-center py-8">
                 Nenhum aluno matriculado.

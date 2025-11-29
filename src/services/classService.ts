@@ -7,11 +7,48 @@ import {
 import { mockClasses } from '@/lib/mock-data'
 import { studentService } from './studentService'
 import { taskService } from './taskService'
+import {
+  addDays,
+  format,
+  parse,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay,
+  addMonths,
+  subMonths,
+} from 'date-fns'
 
 const CLASSES_KEY = 'manyclass_classes'
 const EVENTS_KEY = 'manyclass_events'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+// Helper to parse schedule string "Seg/Qua 19:00"
+const parseSchedule = (schedule: string) => {
+  const parts = schedule.split(' ')
+  if (parts.length < 2) return null
+
+  const daysPart = parts[0]
+  const timePart = parts[1]
+
+  const dayMap: Record<string, number> = {
+    Dom: 0,
+    Seg: 1,
+    Ter: 2,
+    Qua: 3,
+    Qui: 4,
+    Sex: 5,
+    Sáb: 6,
+  }
+
+  const days = daysPart
+    .split('/')
+    .map((d) => dayMap[d])
+    .filter((d) => d !== undefined)
+
+  return { days, time: timePart }
+}
 
 export const classService = {
   // Classes Management
@@ -85,13 +122,18 @@ export const classService = {
       classes[index].billingModel === 'per_student'
     ) {
       for (const studentId of addedStudents) {
+        // Check for custom price override
+        const price =
+          classes[index].customStudentPrices?.[studentId] ??
+          classes[index].price
+
         await studentService.createSubscription({
           studentId,
           plan: 'student_monthly',
           status: 'pending',
           startDate: new Date().toISOString(),
           nextBillingDate: new Date().toISOString(),
-          amount: classes[index].price,
+          amount: price,
         })
       }
     }
@@ -100,6 +142,24 @@ export const classService = {
     classes[index] = updated
     localStorage.setItem(CLASSES_KEY, JSON.stringify(classes))
     return updated
+  },
+
+  updateStudentPrice: async (
+    classId: string,
+    studentId: string,
+    price: number,
+  ): Promise<void> => {
+    const classes = await classService.getAllClasses()
+    const index = classes.findIndex((c) => c.id === classId)
+    if (index === -1) throw new Error('Class not found')
+
+    const cls = classes[index]
+    const customPrices = cls.customStudentPrices || {}
+    customPrices[studentId] = price
+
+    const updated = { ...cls, customStudentPrices: customPrices }
+    classes[index] = updated
+    localStorage.setItem(CLASSES_KEY, JSON.stringify(classes))
   },
 
   // Events Management
@@ -112,7 +172,7 @@ export const classService = {
         events = JSON.parse(stored)
       }
 
-      // Fetch tasks with due dates and convert to events
+      // 1. Fetch tasks with due dates and convert to events
       const tasks = await taskService.getAllTasks()
       const taskEvents: CalendarEvent[] = tasks
         .filter((t) => t.dueDate)
@@ -121,13 +181,51 @@ export const classService = {
           title: t.title,
           description: t.description,
           start_time: t.dueDate!,
-          end_time: t.dueDate!, // Tasks are point-in-time or we could add 1 hour
+          end_time: t.dueDate!, // Tasks are point-in-time
           type: 'task',
-          student_ids: [], // Tasks might not have direct student mapping here easily without class lookup
+          student_ids: t.studentId ? [t.studentId] : [],
           color: t.color || 'blue',
         }))
 
-      const allEvents = [...events, ...taskEvents]
+      // 2. Generate Class Events automatically
+      const classes = await classService.getAllClasses()
+      const classEvents: CalendarEvent[] = []
+
+      // Generate for current month +/- 1 month
+      const today = new Date()
+      const start = startOfMonth(subMonths(today, 1))
+      const end = endOfMonth(addMonths(today, 1))
+      const interval = eachDayOfInterval({ start, end })
+
+      classes.forEach((cls) => {
+        if (cls.status !== 'active') return
+        const schedule = parseSchedule(cls.schedule)
+        if (!schedule) return
+
+        interval.forEach((day) => {
+          if (schedule.days.includes(day.getDay())) {
+            const [hours, minutes] = schedule.time.split(':').map(Number)
+            const startTime = new Date(day)
+            startTime.setHours(hours, minutes, 0, 0)
+            const endTime = new Date(startTime)
+            endTime.setHours(hours + 1, minutes, 0, 0) // Assume 1h duration
+
+            classEvents.push({
+              id: `auto-${cls.id}-${day.toISOString()}`,
+              title: cls.name,
+              description: 'Aula Automática',
+              start_time: startTime.toISOString(),
+              end_time: endTime.toISOString(),
+              type: 'class',
+              student_ids: cls.studentIds,
+              color: 'green', // Default class color
+              classId: cls.id,
+            })
+          }
+        })
+      })
+
+      const allEvents = [...events, ...taskEvents, ...classEvents]
 
       // Simulate "Automatic release of calendar slots for group students with overdue payments"
       const payments = await studentService.getAllPayments()
@@ -157,17 +255,13 @@ export const classService = {
 
   createEvent: async (data: CreateEventDTO): Promise<CalendarEvent> => {
     await delay(300)
-    const events = await classService.getEvents()
-    // Filter out tasks from the stored events list to avoid duplication when saving
-    // Actually getEvents returns merged list. We need to read raw events first.
     const stored = localStorage.getItem(EVENTS_KEY)
     const rawEvents: CalendarEvent[] = stored ? JSON.parse(stored) : []
 
     const newEvent: CalendarEvent = {
       ...data,
       id: Math.random().toString(36).substr(2, 9),
-      color:
-        data.color || 'bg-primary/20 border-primary/30 text-primary-foreground',
+      color: data.color || 'blue',
     }
     const updated = [...rawEvents, newEvent]
     localStorage.setItem(EVENTS_KEY, JSON.stringify(updated))
@@ -180,7 +274,7 @@ export const classService = {
     const rawEvents: CalendarEvent[] = stored ? JSON.parse(stored) : []
 
     const index = rawEvents.findIndex((e) => e.id === data.id)
-    if (index === -1) throw new Error('Event not found') // Could be a task, which we can't update here
+    if (index === -1) throw new Error('Event not found')
 
     const updated = { ...rawEvents[index], ...data }
     rawEvents[index] = updated

@@ -90,6 +90,14 @@ export function CalendarContainer() {
   }
 
   const handleEventClick = (event: CalendarEvent) => {
+    // Prevent editing auto-generated class events for now, or handle them differently
+    if (event.id.startsWith('auto-')) {
+      toast({
+        title: 'Evento Automático',
+        description: 'Gerado a partir da agenda da turma.',
+      })
+      return
+    }
     setSelectedEvent(event)
     setIsModalOpen(true)
   }
@@ -142,6 +150,8 @@ export function CalendarContainer() {
     date: Date,
     hour?: number,
   ) => {
+    if (eventId.startsWith('auto-')) return // Cannot move auto events
+
     const event = events.find((e) => e.id === eventId)
     if (!event) return
 

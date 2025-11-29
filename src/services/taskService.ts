@@ -22,7 +22,8 @@ const enhancedMockTasks: Task[] = mockTasks.map((task) => ({
 
 const defaultTaskColumns: TaskColumn[] = [
   { id: 'open', title: 'Abertas', order: 0 },
-  { id: 'closed', title: 'Fechadas', order: 1 },
+  { id: 'in_progress', title: 'Em Progresso', order: 1 },
+  { id: 'closed', title: 'Fechadas', order: 2 },
 ]
 
 export const taskService = {

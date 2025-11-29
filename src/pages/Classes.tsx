@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -40,19 +39,21 @@ export default function Classes() {
   const [classes, setClasses] = useState<ClassGroup[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<string>('all')
+  const [activeTab, setActiveTab] = useState<string>('individual')
   const [newClass, setNewClass] = useState<{
     name: string
     schedule: string
     billingModel: BillingModel
     price: number
     category: ClassCategory
+    studentLimit?: number
   }>({
     name: '',
     schedule: '',
     billingModel: 'per_student',
     price: 0,
-    category: 'group',
+    category: 'individual',
+    studentLimit: 1,
   })
   const { toast } = useToast()
 
@@ -64,14 +65,11 @@ export default function Classes() {
         setClasses(data)
       } else {
         setClasses([])
-        console.error('Invalid classes data received', data)
       }
     } catch (error) {
-      console.error('Failed to load classes', error)
       toast({
         variant: 'destructive',
         title: 'Erro ao carregar turmas',
-        description: 'Por favor, tente recarregar a página.',
       })
       setClasses([])
     } finally {
@@ -102,17 +100,15 @@ export default function Classes() {
         schedule: '',
         billingModel: 'per_student',
         price: 0,
-        category: 'group',
+        category: 'individual',
+        studentLimit: 1,
       })
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao criar turma' })
     }
   }
 
-  const filteredClasses =
-    activeTab === 'all'
-      ? classes
-      : classes.filter((c) => c.category === activeTab)
+  const filteredClasses = classes.filter((c) => c.category === activeTab)
 
   return (
     <PageTransition className="space-y-8">
@@ -155,9 +151,8 @@ export default function Classes() {
                     setNewClass({
                       ...newClass,
                       category: v as ClassCategory,
-                      // Auto-set billing model based on category for convenience
-                      billingModel:
-                        v === 'individual' ? 'per_student' : 'per_student',
+                      billingModel: 'per_student',
+                      studentLimit: v === 'individual' ? 1 : 10,
                     })
                   }
                 >
@@ -171,6 +166,27 @@ export default function Classes() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {newClass.category !== 'individual' && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="limit" className="text-right">
+                    Limite de Alunos
+                  </Label>
+                  <Input
+                    id="limit"
+                    type="number"
+                    className="col-span-3"
+                    value={newClass.studentLimit}
+                    onChange={(e) =>
+                      setNewClass({
+                        ...newClass,
+                        studentLimit: Number(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+              )}
+
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="schedule" className="text-right">
                   Horário
@@ -242,16 +258,15 @@ export default function Classes() {
         </div>
 
         <Tabs
-          defaultValue="all"
+          defaultValue="individual"
           value={activeTab}
           onValueChange={setActiveTab}
           className="w-full"
         >
           <TabsList>
-            <TabsTrigger value="all">Todas</TabsTrigger>
-            <TabsTrigger value="individual">Individuais</TabsTrigger>
-            <TabsTrigger value="group">Grupos</TabsTrigger>
-            <TabsTrigger value="class">Turmas</TabsTrigger>
+            <TabsTrigger value="individual">Aluno Individual</TabsTrigger>
+            <TabsTrigger value="group">Grupo</TabsTrigger>
+            <TabsTrigger value="class">Turma</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -293,7 +308,7 @@ export default function Classes() {
                 <div className="space-y-2">
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Users className="mr-2 h-4 w-4" />
-                    {cls.studentIds.length} Alunos matriculados
+                    {cls.studentIds.length} / {cls.studentLimit || '∞'} Alunos
                   </div>
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Clock className="mr-2 h-4 w-4" />

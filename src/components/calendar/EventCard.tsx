@@ -23,6 +23,7 @@ const colorClasses: Record<string, string> = {
 export function EventCard({ event, onClick, view }: EventCardProps) {
   const students = mockStudents.filter((s) => event.student_ids.includes(s.id))
   const isTask = event.type === 'task'
+  const isClass = event.type === 'class'
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('text/plain', event.id)
@@ -67,8 +68,8 @@ export function EventCard({ event, onClick, view }: EventCardProps) {
         )}
       </div>
 
-      {/* Only show students for classes, not tasks */}
-      {!isTask && view === 'week' && (
+      {/* Show students for classes */}
+      {isClass && view === 'week' && (
         <div className="mt-1 flex -space-x-2 overflow-hidden pt-1">
           {students.map((student) => (
             <Avatar
@@ -83,7 +84,7 @@ export function EventCard({ event, onClick, view }: EventCardProps) {
           ))}
         </div>
       )}
-      {!isTask && view === 'month' && students.length > 0 && (
+      {isClass && view === 'month' && students.length > 0 && (
         <div className="flex items-center gap-1 mt-0.5">
           <Avatar className="h-3 w-3">
             <AvatarImage src={students[0].avatar} />
