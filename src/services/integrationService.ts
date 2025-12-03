@@ -49,6 +49,17 @@ const defaultIntegrations: Integration[] = [
     description: 'Utilize o Microsoft Teams para suas salas de aula virtuais.',
   },
   {
+    id: 'whatsapp',
+    name: 'WhatsApp',
+    provider: 'whatsapp',
+    type: 'api_key',
+    status: 'disconnected',
+    logo: 'https://img.usecurling.com/i?q=whatsapp&color=green',
+    description:
+      'Envie lembretes de aula e cobranças automaticamente via WhatsApp.',
+    planRequired: 'intermediate',
+  },
+  {
     id: 'asaas',
     name: 'Asaas',
     provider: 'asaas',

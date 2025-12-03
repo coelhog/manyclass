@@ -2,9 +2,14 @@ export type Role = 'teacher' | 'student' | 'admin'
 
 export type PlanType = 'basic' | 'intermediate' | 'premium'
 
-export type SubscriptionStatus = 'active' | 'pending' | 'past_due' | 'expired'
+export type SubscriptionStatus =
+  | 'active'
+  | 'pending'
+  | 'past_due'
+  | 'expired'
+  | 'trial'
 
-export type BillingCycle = 'monthly' | 'quarterly'
+export type BillingCycle = 'monthly' | 'quarterly' | 'yearly'
 
 export type BillingModel = 'per_student' | 'per_class'
 
@@ -20,6 +25,9 @@ export interface User {
   stripeCustomerId?: string
   phone?: string
   bio?: string
+  trialEndsAt?: string
+  onboardingCompleted?: boolean
+  subscriptionStatus?: SubscriptionStatus
 }
 
 export interface Student {
@@ -212,6 +220,7 @@ export type IntegrationProvider =
   | 'google_meet'
   | 'zoom'
   | 'microsoft_teams'
+  | 'whatsapp'
   | 'asaas'
 
 export interface IntegrationConfig {
@@ -229,6 +238,7 @@ export interface Integration {
   description: string
   config?: IntegrationConfig
   connectedAt?: string
+  planRequired?: PlanType
 }
 
 // Notes Types
@@ -241,4 +251,31 @@ export interface ClassNote {
   content: string // HTML content from rich text editor
   createdAt: string
   updatedAt: string
+}
+
+// Onboarding Types
+export interface OnboardingQuestion {
+  id: string
+  step: number
+  text: string
+  type: 'text' | 'choice'
+  options?: string[]
+}
+
+export interface OnboardingResponse {
+  id: string
+  userId: string
+  questionId: string
+  answer: string
+  answeredAt: string
+}
+
+export interface Plan {
+  id: PlanType
+  name: string
+  priceMonthly: number
+  priceAnnual: number
+  description: string
+  features: string[]
+  highlight?: boolean
 }

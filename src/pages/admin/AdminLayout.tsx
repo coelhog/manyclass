@@ -7,6 +7,8 @@ import {
   LogOut,
   Shield,
   BarChart,
+  FileText,
+  List,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -23,6 +25,8 @@ export default function AdminLayout() {
     { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
     { title: 'Professores', url: '/admin/teachers', icon: Users },
     { title: 'Métricas', url: '/admin/metrics', icon: BarChart },
+    { title: 'Onboarding', url: '/admin/onboarding', icon: FileText },
+    { title: 'Respostas', url: '/admin/responses', icon: List },
     { title: 'Configurações', url: '/admin/settings', icon: Settings },
   ]
 

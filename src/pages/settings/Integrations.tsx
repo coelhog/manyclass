@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Skeleton } from '@/components/ui/skeleton'
+import { FeatureGate } from '@/components/FeatureGate'
 
 export default function Integrations() {
   const [integrations, setIntegrations] = useState<Integration[]>([])
@@ -185,16 +186,32 @@ export default function Integrations() {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {integrations.map((integration) => (
-            <IntegrationCard
-              key={integration.id}
-              integration={integration}
-              onConnect={handleConnect}
-              onDisconnect={handleDisconnect}
-              onUpdateConfig={handleUpdateConfig}
-              isLoading={processingId === integration.id}
-            />
-          ))}
+          {integrations.map((integration) => {
+            const card = (
+              <IntegrationCard
+                key={integration.id}
+                integration={integration}
+                onConnect={handleConnect}
+                onDisconnect={handleDisconnect}
+                onUpdateConfig={handleUpdateConfig}
+                isLoading={processingId === integration.id}
+              />
+            )
+
+            if (integration.planRequired) {
+              return (
+                <FeatureGate
+                  key={integration.id}
+                  requiredPlan={integration.planRequired}
+                  featureName={`Integração com ${integration.name}`}
+                >
+                  {card}
+                </FeatureGate>
+              )
+            }
+
+            return card
+          })}
         </div>
       )}
 

@@ -18,8 +18,7 @@ import { BottomNav } from './BottomNav'
 import { useIsMobile } from '@/hooks/use-mobile'
 
 export default function Layout() {
-  const { user, logout, isLoading } = useAuth()
-  const { toast } = useToast()
+  const { user, logout, isLoading, checkSubscriptionAccess } = useAuth()
   const isMobile = useIsMobile()
   const location = useLocation()
 
@@ -33,6 +32,18 @@ export default function Layout() {
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  // Redirect to Onboarding if not completed and user is a teacher
+  if (user.role === 'teacher' && !user.onboardingCompleted) {
+    return <Navigate to="/onboarding" replace />
+  }
+
+  // Check Subscription Access
+  const subAccess = checkSubscriptionAccess()
+  if (!subAccess.allowed && location.pathname !== '/plans') {
+    // If access denied, redirect to plans page to upgrade/renew
+    return <Navigate to="/plans" replace />
   }
 
   return (

@@ -24,6 +24,7 @@ import AutomatedMessages from './pages/AutomatedMessages'
 import TeacherSchedule from './pages/TeacherSchedule'
 import BookingPage from './pages/BookingPage'
 import NotFound from './pages/NotFound'
+import Onboarding from './pages/Onboarding'
 
 // Admin Pages
 import AdminLogin from './pages/admin/AdminLogin'
@@ -33,6 +34,8 @@ import TeachersList from './pages/admin/TeachersList'
 import TeacherEdit from './pages/admin/TeacherEdit'
 import AdminMetrics from './pages/admin/AdminMetrics'
 import AdminSettings from './pages/admin/AdminSettings'
+import AdminOnboarding from './pages/admin/AdminOnboarding'
+import AdminResponses from './pages/admin/AdminResponses'
 
 const App = () => (
   <BrowserRouter
@@ -49,6 +52,9 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/book/:teacherId" element={<BookingPage />} />
 
+            {/* Onboarding Route (Protected by AuthContext redirection in Onboarding component) */}
+            <Route path="/onboarding" element={<Onboarding />} />
+
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin" element={<AdminLayout />}>
@@ -57,6 +63,8 @@ const App = () => (
               <Route path="teachers/:id" element={<TeacherEdit />} />
               <Route path="metrics" element={<AdminMetrics />} />
               <Route path="settings" element={<AdminSettings />} />
+              <Route path="onboarding" element={<AdminOnboarding />} />
+              <Route path="responses" element={<AdminResponses />} />
               <Route path="*" element={<NotFound />} />
             </Route>
 
