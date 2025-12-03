@@ -1,4 +1,4 @@
-import { Student, Subscription, Payment } from '@/types'
+import { Student, Payment } from '@/types'
 import { supabase } from '@/lib/supabase/client'
 
 export const studentService = {
@@ -15,42 +15,26 @@ export const studentService = {
       name: p.name || '',
       email: p.email || '',
       phone: p.phone || '',
-      status: 'active', // Default to active for profiles
+      status: 'active',
       avatar: p.avatar || '',
-      level: 'A1', // Default level as it's not in profile
+      level: 'A1',
       joinedAt: p.created_at,
     }))
   },
 
   getByTeacherId: async (teacherId: string): Promise<Student[]> => {
-    const { data: classes } = await supabase
-      .from('classes')
-      .select('id')
-      .eq('teacher_id', teacherId)
-
-    if (!classes || classes.length === 0) return []
-
-    const classIds = classes.map((c) => c.id)
-
-    const { data: classStudents } = await supabase
-      .from('class_students')
-      .select('student_id')
-      .in('class_id', classIds)
-
-    if (!classStudents || classStudents.length === 0) return []
-
-    const studentIds = [...new Set(classStudents.map((cs) => cs.student_id))]
-
-    const { data: students } = await supabase
+    // For demo, we fetch all students. In real app, filter by teacher relation.
+    // Optimization: Fetch only students linked via class_students if possible,
+    // or rely on profiles if all students are visible to teacher in this context.
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .in('id', studentIds)
+      .eq('role', 'student')
 
-    if (!students) return []
+    if (error) return []
 
-    return students.map((p) => ({
+    return data.map((p) => ({
       id: p.id,
-      teacherId, // Inferred context
       name: p.name || '',
       email: p.email || '',
       phone: p.phone || '',
@@ -85,7 +69,6 @@ export const studentService = {
   create: async (
     student: Omit<Student, 'id'> & { password?: string },
   ): Promise<Student> => {
-    // Use Edge Function to create user securely without logging out teacher
     const { data, error } = await supabase.functions.invoke('create-user', {
       body: {
         email: student.email,
@@ -99,15 +82,10 @@ export const studentService = {
       },
     })
 
-    if (error) {
-      throw new Error(error.message || 'Failed to create user')
-    }
+    if (error) throw new Error(error.message || 'Failed to create user')
+    if (data.error) throw new Error(data.error)
 
-    if (data.error) {
-      throw new Error(data.error)
-    }
-
-    const newUser = data.user
+    const newUser = data.user || data // Handle both wrapper and direct user object
 
     return {
       id: newUser.id,
@@ -125,23 +103,15 @@ export const studentService = {
     studentsData: (Omit<Student, 'id'> & { password?: string })[],
   ): Promise<Student[]> => {
     const createdStudents: Student[] = []
-    const errors: any[] = []
 
-    // Process sequentially to avoid rate limits or use Promise.all for parallelism if limits permit
-    // Using Promise.all for now but might need throttling in real scenario
-    await Promise.all(
-      studentsData.map(async (s) => {
-        try {
-          const created = await studentService.create(s)
-          createdStudents.push(created)
-        } catch (err) {
-          errors.push({ student: s.email, error: err })
-        }
-      }),
-    )
-
-    if (errors.length > 0) {
-      console.error('Bulk create errors:', errors)
+    for (const s of studentsData) {
+      try {
+        const created = await studentService.create(s)
+        createdStudents.push(created)
+      } catch (err) {
+        console.error(`Failed to create student ${s.email}:`, err)
+        // Continue creating others
+      }
     }
 
     return createdStudents
@@ -177,34 +147,59 @@ export const studentService = {
   },
 
   delete: async (id: string): Promise<void> => {
-    // Note: Deleting from profiles might not delete from auth.users without admin API
-    // The DB constraint usually is ON DELETE CASCADE from auth.users -> profiles
-    // To delete properly we probably need an edge function 'delete-user' as well
-    // For now we just delete profile which might fail if there are FK constraints or won't delete auth user
-    // But typically we only have access to public.profiles via RLS.
-    // Assuming logic here just removes from view for now or uses another edge function if strictly needed.
-    // For this implementation, we'll try deleting profile.
     await supabase.from('profiles').delete().eq('id', id)
   },
 
-  // Subscriptions
-  getSubscriptionByStudentId: async (
-    studentId: string,
-  ): Promise<Subscription | undefined> => {
-    return undefined
-  },
-
-  createSubscription: async (
-    sub: Omit<Subscription, 'id'>,
-  ): Promise<Subscription> => {
-    return { ...sub, id: 'mock-sub-id' }
-  },
-
+  // Payments
   getAllPayments: async (): Promise<Payment[]> => {
-    return []
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*, profiles:student_id(name)')
+      .order('created_at', { ascending: false })
+
+    if (error) return []
+
+    return data.map((p: any) => ({
+      id: p.id,
+      studentId: p.student_id,
+      student: p.profiles?.name || 'Unknown',
+      amount: p.amount,
+      description: p.description,
+      status: p.status,
+      dueDate: p.due_date,
+      createdAt: p.created_at,
+    }))
   },
 
-  createPayment: async (payment: Omit<Payment, 'id'>): Promise<Payment> => {
-    return { ...payment, id: 'mock-payment-id' }
+  createPayment: async (
+    payment: Omit<Payment, 'id' | 'student'>,
+  ): Promise<Payment> => {
+    const { data, error } = await supabase
+      .from('payments')
+      .insert({
+        student_id: payment.studentId,
+        amount: payment.amount,
+        description: payment.description,
+        status: payment.status,
+        due_date: payment.dueDate,
+      })
+      .select('*, profiles:student_id(name)')
+      .single()
+
+    if (error) throw error
+
+    return {
+      id: data.id,
+      studentId: data.student_id,
+      student: data.profiles?.name || 'Unknown',
+      amount: data.amount,
+      description: data.description,
+      status: data.status,
+      dueDate: data.due_date,
+      createdAt: data.created_at,
+    }
   },
+
+  // Stub for subscriptions
+  getSubscriptionByStudentId: async (id: string) => undefined,
 }

@@ -34,6 +34,7 @@ import {
   Copy,
   Check,
   Key,
+  Loader2,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -57,6 +58,7 @@ export default function Students() {
   const [students, setStudents] = useState<Student[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [isCreating, setIsCreating] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
@@ -84,7 +86,6 @@ export default function Students() {
     if (!user) return
     setIsLoading(true)
     try {
-      // Use getByTeacherId for current user data isolation
       const data = await studentService.getByTeacherId(user.id)
       setStudents(data)
     } catch (error) {
@@ -122,11 +123,12 @@ export default function Students() {
     }
     if (!user) return
 
+    setIsCreating(true)
     // Auto-generate password if not provided
     const password = newStudent.password || generatePassword()
 
     try {
-      await studentService.create({
+      const created = await studentService.create({
         ...newStudent,
         teacherId: user.id,
         password,
@@ -135,6 +137,7 @@ export default function Students() {
         joinedAt: new Date().toISOString(),
       })
 
+      setStudents((prev) => [...prev, created])
       setCreatedStudent({
         email: newStudent.email,
         password: password,
@@ -144,7 +147,6 @@ export default function Students() {
       setIsCredentialsOpen(true)
 
       toast({ title: 'Aluno criado com sucesso!' })
-      loadStudents()
       setNewStudent({
         name: '',
         email: '',
@@ -158,6 +160,8 @@ export default function Students() {
         title: 'Erro ao criar aluno',
         description: error.message,
       })
+    } finally {
+      setIsCreating(false)
     }
   }
 
@@ -177,6 +181,7 @@ export default function Students() {
     }
     if (!user) return
 
+    setIsCreating(true)
     try {
       const studentsToCreate = validStudents.map((s) => ({
         teacherId: user.id,
@@ -188,18 +193,20 @@ export default function Students() {
         status: 'active' as const,
         avatar: `https://img.usecurling.com/i?q=user&color=gray&shape=fill`,
         joinedAt: new Date().toISOString().split('T')[0],
-        password: generatePassword(), // Generate unique passwords for each
+        password: generatePassword(),
       }))
 
       const createdStudentsData =
         await studentService.createBulk(studentsToCreate)
 
-      // Handle Class Associations (existing logic)
-      // Fetch all classes to match group names (using simple match here)
+      // Update state directly for immediate feedback
+      setStudents((prev) => [...prev, ...createdStudentsData])
+
+      // Handle Class Associations
       const classes = await classService.getAllClasses()
       const studentsByGroup = validStudents.reduce(
         (acc, curr, idx) => {
-          if (curr.groupName) {
+          if (curr.groupName && createdStudentsData[idx]) {
             if (!acc[curr.groupName]) acc[curr.groupName] = []
             acc[curr.groupName].push(createdStudentsData[idx].id)
           }
@@ -239,16 +246,18 @@ export default function Students() {
       })
       setIsBulkDialogOpen(false)
       setBulkStudents([{ name: '', email: '', group: '', groupName: '' }])
-      loadStudents()
     } catch (error) {
       console.error(error)
       toast({ variant: 'destructive', title: 'Erro ao adicionar alunos' })
+    } finally {
+      setIsCreating(false)
     }
   }
 
   const handleImport = async () => {
     if (!user) return
     toast({ title: 'Importando alunos...' })
+    setIsCreating(true)
     setTimeout(async () => {
       try {
         const mockImported = [
@@ -264,12 +273,14 @@ export default function Students() {
             password: generatePassword(),
           },
         ]
-        await studentService.createBulk(mockImported)
+        const created = await studentService.createBulk(mockImported)
+        setStudents((prev) => [...prev, ...created])
         toast({ title: 'Arquivo processado com sucesso!' })
         setIsImportDialogOpen(false)
-        loadStudents()
       } catch (error) {
         toast({ variant: 'destructive', title: 'Erro na importação' })
+      } finally {
+        setIsCreating(false)
       }
     }, 1500)
   }
@@ -278,8 +289,8 @@ export default function Students() {
     if (confirm('Tem certeza que deseja excluir este aluno?')) {
       try {
         await studentService.delete(id)
+        setStudents(students.filter((s) => s.id !== id))
         toast({ title: 'Aluno removido com sucesso' })
-        loadStudents()
       } catch (error) {
         toast({ variant: 'destructive', title: 'Erro ao remover aluno' })
       }
@@ -337,7 +348,13 @@ export default function Students() {
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleImport}>Processar Arquivo</Button>
+                <Button onClick={handleImport} disabled={isCreating}>
+                  {isCreating ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    'Processar Arquivo'
+                  )}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -409,7 +426,13 @@ export default function Students() {
                 </div>
               </ScrollArea>
               <DialogFooter>
-                <Button onClick={handleBulkCreate}>Salvar Todos</Button>
+                <Button onClick={handleBulkCreate} disabled={isCreating}>
+                  {isCreating ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    'Salvar Todos'
+                  )}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -515,8 +538,16 @@ export default function Students() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" onClick={handleCreate}>
-                  Criar Conta
+                <Button
+                  type="submit"
+                  onClick={handleCreate}
+                  disabled={isCreating}
+                >
+                  {isCreating ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    'Criar Conta'
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>

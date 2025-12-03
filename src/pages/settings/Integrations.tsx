@@ -76,6 +76,7 @@ export default function Integrations() {
           popup.close()
           try {
             // Simulate mocked tokens for Google Providers to satisfy user story about storing tokens
+            // In a real app, the OAuth callback would handle this.
             let config = {}
             if (
               integration.provider === 'google_calendar' ||

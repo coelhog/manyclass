@@ -41,7 +41,7 @@ export default function Dashboard() {
   const [pendingTasksCount, setPendingTasksCount] = useState(0)
   const [platformCourses, setPlatformCourses] = useState<PlatformCourse[]>([])
 
-  // Mock chart data for now, in a real scenario this would be calculated from historical payments/classes
+  // Mock chart data for now
   const chartData = [
     { month: 'Jan', revenue: 1200 },
     { month: 'Fev', revenue: 1500 },
@@ -57,36 +57,33 @@ export default function Dashboard() {
       setIsLoading(true)
       try {
         // Fetch data for logged-in teacher
-        const [students, classes, tasks, courses] = await Promise.all([
-          studentService.getByTeacherId(user.id),
-          classService.getByTeacherId(user.id),
-          taskService.getAllTasks(),
-          courseService.getAll(),
-        ])
+        const [students, classes, tasks, courses, payments] = await Promise.all(
+          [
+            studentService.getByTeacherId(user.id),
+            classService.getByTeacherId(user.id),
+            taskService.getAllTasks(),
+            courseService.getAll(),
+            studentService.getAllPayments(),
+          ],
+        )
 
         setTotalStudents(students.length)
         setTotalClasses(classes.length)
         setActiveClasses(classes.filter((c) => c.status === 'active'))
         setPlatformCourses(courses.filter((c) => c.isActive))
 
-        // Calculate Revenue (Monthly Projection)
-        let revenue = 0
-        classes
-          .filter((c) => c.status === 'active')
-          .forEach((c) => {
-            if (c.billingModel === 'per_class') {
-              revenue += c.price
-            } else if (c.billingModel === 'per_student') {
-              // Sum specific prices for each student
-              c.studentIds.forEach((sid) => {
-                const studentPrice = c.customStudentPrices?.[sid] ?? c.price
-                revenue += studentPrice
-              })
-            }
+        // Calculate Revenue from payments this month
+        const currentMonth = new Date().getMonth()
+        const revenue = payments
+          .filter((p) => {
+            const d = new Date(p.dueDate)
+            return d.getMonth() === currentMonth && p.status === 'paid'
           })
+          .reduce((acc, curr) => acc + curr.amount, 0)
+
         setMonthlyRevenue(revenue)
 
-        // Calculate pending tasks (mock logic since tasks don't link to teacher directly in mock yet)
+        // Calculate pending tasks
         // Assuming tasks belong to teacher's classes
         const teacherClassIds = classes.map((c) => c.id)
         const teacherTasks = tasks.filter(
@@ -168,9 +165,7 @@ export default function Dashboard() {
         </Card>
         <Card className="hover:shadow-md transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Receita Mensal (Est.)
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Receita (Mês)</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -178,7 +173,7 @@ export default function Dashboard() {
               R$ {monthlyRevenue.toFixed(2).replace('.', ',')}
             </div>
             <p className="text-xs text-muted-foreground">
-              Baseado nas turmas ativas
+              Baseado em pagamentos recebidos
             </p>
           </CardContent>
         </Card>

@@ -202,6 +202,7 @@ export const classService = {
   updateClass: async (
     id: string,
     data: Partial<ClassGroup>,
+    options?: { syncGoogle?: boolean },
   ): Promise<ClassGroup> => {
     const updates: any = {
       name: data.name,
@@ -250,6 +251,24 @@ export const classService = {
 
       if (toInsert.length > 0) {
         await supabase.from('class_students').insert(toInsert)
+      }
+    }
+
+    // Sync Google Calendar if requested
+    if (options?.syncGoogle) {
+      const { data: user } = await supabase.auth.getUser()
+      if (user?.user) {
+        try {
+          await supabase.functions.invoke('google-calendar', {
+            body: {
+              action: 'sync_calendar',
+              userId: user.user.id,
+              classDetails: { ...data, id },
+            },
+          })
+        } catch (e) {
+          console.error('Failed to sync calendar on update', e)
+        }
       }
     }
 

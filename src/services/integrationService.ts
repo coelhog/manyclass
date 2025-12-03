@@ -1,18 +1,6 @@
 import { Integration, IntegrationConfig, IntegrationProvider } from '@/types'
 import { supabase } from '@/lib/supabase/client'
 
-const defaultIntegrationsList = [
-  {
-    integration_id: 'google_calendar',
-    name: 'Google Calendar',
-    provider: 'google_calendar',
-    type: 'oauth',
-    logo: 'https://img.usecurling.com/i?q=google-calendar&color=multicolor',
-    description: 'Sincronize suas aulas com o Google.',
-  },
-  // ... other defaults mapped in getAll
-]
-
 export const integrationService = {
   getAll: async (): Promise<Integration[]> => {
     const { data, error } = await supabase.from('integrations').select('*')
@@ -56,10 +44,13 @@ export const integrationService = {
     ]
 
     return defaults.map((def) => {
-      const stored = data.find((d) => d.integration_id === def.id)
+      // Find stored integration matching provider/id
+      const stored = data.find(
+        (d) => d.integration_id === def.id || d.provider === def.provider,
+      )
       return {
         ...def,
-        id: def.id, // Use ID from static def as primary key for UI logic
+        id: def.id, // Use static ID for UI consistency
         status: (stored?.status as any) || 'disconnected',
         config: stored?.config,
         connectedAt: stored?.connected_at,
@@ -76,11 +67,13 @@ export const integrationService = {
     } = await supabase.auth.getUser()
     if (!user) throw new Error('User not found')
 
+    // For Google, we are mocking the storage of tokens.
+    // In production, this would happen via callback from OAuth flow.
     await supabase.from('integrations').upsert(
       {
         user_id: user.id,
         integration_id: integrationId,
-        provider: integrationId, // Simplified mapping
+        provider: integrationId,
         status: 'connected',
         config: config || {},
         connected_at: new Date().toISOString(),
@@ -97,7 +90,7 @@ export const integrationService = {
 
     await supabase
       .from('integrations')
-      .update({ status: 'disconnected', connected_at: null })
+      .update({ status: 'disconnected', connected_at: null, config: {} })
       .eq('user_id', user.id)
       .eq('integration_id', integrationId)
   },

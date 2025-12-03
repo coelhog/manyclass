@@ -73,14 +73,14 @@ export default function Payments() {
     try {
       // Create a payment for each selected student
       for (const studentId of newPayment.studentIds) {
-        const student = students.find((s) => s.id === studentId)
         await studentService.createPayment({
           studentId: studentId,
-          student: student?.name || 'Unknown',
           description: newPayment.description,
           amount: newPayment.amount,
           status: 'pending',
-          dueDate: newPayment.dueDate || new Date().toISOString(),
+          dueDate: newPayment.dueDate
+            ? new Date(newPayment.dueDate).toISOString()
+            : new Date().toISOString(),
         })
       }
 
@@ -97,6 +97,17 @@ export default function Payments() {
       toast({ variant: 'destructive', title: 'Erro ao registrar pagamento' })
     }
   }
+
+  // Calculate summaries based on actual payment data
+  const totalRevenue = payments
+    .filter((p) => p.status === 'paid')
+    .reduce((acc, curr) => acc + curr.amount, 0)
+  const pendingRevenue = payments
+    .filter((p) => p.status === 'pending')
+    .reduce((acc, curr) => acc + curr.amount, 0)
+  const overdueRevenue = payments
+    .filter((p) => p.status === 'overdue')
+    .reduce((acc, curr) => acc + curr.amount, 0)
 
   const studentOptions = students.map((s) => ({
     label: s.name,
@@ -203,16 +214,18 @@ export default function Payments() {
           <>
             <div className="bg-card p-6 rounded-lg border shadow-sm hover:shadow-md transition-shadow">
               <div className="text-sm font-medium text-muted-foreground">
-                Receita Total (Mês)
+                Receita Total (Pago)
               </div>
-              <div className="text-2xl font-bold mt-2">R$ 4.250,00</div>
+              <div className="text-2xl font-bold mt-2">
+                R$ {totalRevenue.toFixed(2)}
+              </div>
             </div>
             <div className="bg-card p-6 rounded-lg border shadow-sm hover:shadow-md transition-shadow">
               <div className="text-sm font-medium text-muted-foreground">
                 Pendente
               </div>
               <div className="text-2xl font-bold mt-2 text-yellow-600">
-                R$ 1.250,00
+                R$ {pendingRevenue.toFixed(2)}
               </div>
             </div>
             <div className="bg-card p-6 rounded-lg border shadow-sm hover:shadow-md transition-shadow">
@@ -220,7 +233,7 @@ export default function Payments() {
                 Atrasado
               </div>
               <div className="text-2xl font-bold mt-2 text-red-600">
-                R$ 450,00
+                R$ {overdueRevenue.toFixed(2)}
               </div>
             </div>
           </>

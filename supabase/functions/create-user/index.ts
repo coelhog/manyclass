@@ -22,14 +22,11 @@ Deno.serve(async (req: Request) => {
     const { email, password, name, role, phone, user_metadata } =
       await req.json()
 
-    if (!email || !password) {
-      return new Response(
-        JSON.stringify({ error: 'Email and password are required' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      )
+    if (!email) {
+      return new Response(JSON.stringify({ error: 'Email is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     // Check if user already exists to prevent non-2xx error from bubbling up blindly
@@ -49,10 +46,14 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    // If password is provided, create user with password
+    // If not (e.g. just adding student record placeholder), create with random password
+    const finalPassword = password || Math.random().toString(36).slice(-8)
+
     const { data: user, error: createError } =
       await supabase.auth.admin.createUser({
         email,
-        password,
+        password: finalPassword,
         email_confirm: true,
         user_metadata: {
           full_name: name,
@@ -85,12 +86,10 @@ Deno.serve(async (req: Request) => {
 
       if (profileError) {
         console.error('Profile update error:', profileError)
-        // We don't return error here to avoid rolling back auth user creation if not strictly necessary,
-        // but ideally we should transaction or cleanup. For now, logging is sufficient.
       }
     }
 
-    return new Response(JSON.stringify(user), {
+    return new Response(JSON.stringify({ ...user, password: finalPassword }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })

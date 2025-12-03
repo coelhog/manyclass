@@ -63,7 +63,9 @@ export default function Classes() {
   const [classes, setClasses] = useState<ClassGroup[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<string>('individual')
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editClassId, setEditClassId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<string>('all')
   const [newClass, setNewClass] = useState<{
     name: string
     days: number[]
@@ -76,6 +78,7 @@ export default function Classes() {
     color: string
     syncGoogle: boolean
     generateMeet: boolean
+    meetLink: string
   }>({
     name: '',
     days: [],
@@ -88,6 +91,7 @@ export default function Classes() {
     color: 'blue',
     syncGoogle: false,
     generateMeet: false,
+    meetLink: '',
   })
   const [isCreating, setIsCreating] = useState(false)
   const { toast } = useToast()
@@ -117,7 +121,51 @@ export default function Classes() {
     loadClasses()
   }, [loadClasses])
 
-  const handleCreate = async () => {
+  const resetForm = () => {
+    setNewClass({
+      name: '',
+      days: [],
+      startTime: '09:00',
+      duration: 60,
+      billingModel: 'per_student',
+      price: 0,
+      category: 'individual',
+      studentLimit: 1,
+      color: 'blue',
+      syncGoogle: false,
+      generateMeet: false,
+      meetLink: '',
+    })
+    setIsEditMode(false)
+    setEditClassId(null)
+  }
+
+  const handleOpenCreate = () => {
+    resetForm()
+    setIsDialogOpen(true)
+  }
+
+  const handleOpenEdit = (cls: ClassGroup) => {
+    setIsEditMode(true)
+    setEditClassId(cls.id)
+    setNewClass({
+      name: cls.name,
+      days: cls.days,
+      startTime: cls.startTime,
+      duration: cls.duration,
+      billingModel: cls.billingModel,
+      price: cls.price,
+      category: cls.category,
+      studentLimit: cls.studentLimit,
+      color: cls.color,
+      syncGoogle: false, // Default to false for edit unless we fetch sync state
+      generateMeet: false,
+      meetLink: cls.meetLink || '',
+    })
+    setIsDialogOpen(true)
+  }
+
+  const handleCreateOrUpdate = async () => {
     if (!newClass.name) {
       toast({ variant: 'destructive', title: 'Nome da turma é obrigatório' })
       return
@@ -135,69 +183,88 @@ export default function Classes() {
       .join('/')
     const scheduleStr = `${daysStr} ${newClass.startTime}`
 
+    const commonData = {
+      name: newClass.name,
+      days: newClass.days,
+      startTime: newClass.startTime,
+      duration: newClass.duration,
+      billingModel: newClass.billingModel,
+      price: newClass.price,
+      category: newClass.category,
+      studentLimit: newClass.studentLimit,
+      color: newClass.color,
+      teacherId: user.id,
+      schedule: scheduleStr,
+      status: 'active' as const,
+      meetLink: newClass.meetLink,
+    }
+
     try {
-      await classService.createClass(
-        {
-          name: newClass.name,
-          days: newClass.days,
-          startTime: newClass.startTime,
-          duration: newClass.duration,
-          billingModel: newClass.billingModel,
-          price: newClass.price,
-          category: newClass.category,
-          studentLimit: newClass.studentLimit,
-          color: newClass.color,
-          teacherId: user.id,
-          schedule: scheduleStr,
-          status: 'active',
-          studentIds: [],
-        },
-        {
-          syncGoogle: newClass.syncGoogle,
-          generateMeet: newClass.generateMeet,
-        },
-      )
-      toast({ title: 'Turma criada com sucesso!' })
+      if (isEditMode && editClassId) {
+        await classService.updateClass(
+          editClassId,
+          {
+            ...commonData,
+            studentIds: classes.find((c) => c.id === editClassId)?.studentIds,
+          }, // Preserve students on edit
+          { syncGoogle: newClass.syncGoogle },
+        )
+        toast({ title: 'Turma atualizada com sucesso!' })
+      } else {
+        await classService.createClass(
+          { ...commonData, studentIds: [] },
+          {
+            syncGoogle: newClass.syncGoogle,
+            generateMeet: newClass.generateMeet,
+          },
+        )
+        toast({ title: 'Turma criada com sucesso!' })
+      }
       setIsDialogOpen(false)
       loadClasses()
-      setNewClass({
-        name: '',
-        days: [],
-        startTime: '09:00',
-        duration: 60,
-        billingModel: 'per_student',
-        price: 0,
-        category: 'individual',
-        studentLimit: 1,
-        color: 'blue',
-        syncGoogle: false,
-        generateMeet: false,
-      })
+      resetForm()
     } catch (error) {
       console.error(error)
-      toast({ variant: 'destructive', title: 'Erro ao criar turma' })
+      toast({
+        variant: 'destructive',
+        title: isEditMode ? 'Erro ao atualizar turma' : 'Erro ao criar turma',
+      })
     } finally {
       setIsCreating(false)
     }
   }
 
-  const filteredClasses = classes.filter((c) => c.category === activeTab)
+  const filteredClasses =
+    activeTab === 'all'
+      ? classes
+      : classes.filter((c) => c.category === activeTab)
 
   return (
     <PageTransition className="space-y-8">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Turmas</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open)
+            if (!open) resetForm()
+          }}
+        >
           <DialogTrigger asChild>
-            <Button className="shadow-sm hover:shadow-md transition-all">
+            <Button
+              className="shadow-sm hover:shadow-md transition-all"
+              onClick={handleOpenCreate}
+            >
               <Plus className="mr-2 h-4 w-4" /> Criar Turma
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Nova Turma</DialogTitle>
+              <DialogTitle>
+                {isEditMode ? 'Editar Turma' : 'Nova Turma'}
+              </DialogTitle>
               <DialogDescription>
-                Configure os detalhes da nova turma.
+                Configure os detalhes da turma.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -382,6 +449,18 @@ export default function Classes() {
                 </Select>
               </div>
 
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Link Meet</Label>
+                <Input
+                  className="col-span-3"
+                  value={newClass.meetLink}
+                  onChange={(e) =>
+                    setNewClass({ ...newClass, meetLink: e.target.value })
+                  }
+                  placeholder="https://meet.google.com/..."
+                />
+              </div>
+
               <div className="grid grid-cols-4 items-center gap-4 border-t pt-4">
                 <Label className="text-right">Google Meet</Label>
                 <div className="col-span-3 flex items-center gap-2">
@@ -413,8 +492,8 @@ export default function Classes() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleCreate} disabled={isCreating}>
-                {isCreating ? 'Criando...' : 'Criar'}
+              <Button onClick={handleCreateOrUpdate} disabled={isCreating}>
+                {isCreating ? 'Salvando...' : isEditMode ? 'Salvar' : 'Criar'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -430,12 +509,13 @@ export default function Classes() {
         </div>
 
         <Tabs
-          defaultValue="individual"
+          defaultValue="all"
           value={activeTab}
           onValueChange={setActiveTab}
           className="w-full"
         >
           <TabsList>
+            <TabsTrigger value="all">Todas</TabsTrigger>
             <TabsTrigger value="individual">Aluno Individual</TabsTrigger>
             <TabsTrigger value="group">Grupo</TabsTrigger>
             <TabsTrigger value="class">Turma</TabsTrigger>
@@ -496,11 +576,15 @@ export default function Classes() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between gap-2">
-                <Button variant="outline" className="flex-1" asChild>
-                  <Link to={`/classes/${cls.id}`}>Ver Detalhes</Link>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => handleOpenEdit(cls)}
+                >
+                  Gerenciar
                 </Button>
                 <Button className="flex-1" asChild>
-                  <Link to={`/classes/${cls.id}`}>Gerenciar</Link>
+                  <Link to={`/classes/${cls.id}`}>Detalhes</Link>
                 </Button>
               </CardFooter>
             </Card>

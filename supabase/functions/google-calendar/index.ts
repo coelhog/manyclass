@@ -19,28 +19,27 @@ Deno.serve(async (req: Request) => {
       throw new Error('User ID is required')
     }
 
-    // Retrieve user's Google integration tokens
+    // Retrieve user's Google integration tokens from DB
     const { data: integration } = await supabase
       .from('integrations')
       .select('config')
       .eq('user_id', userId)
-      .eq('provider', 'google_calendar') // Assuming 'google_calendar' stores the tokens
+      .eq('provider', 'google_calendar')
       .single()
 
-    // In a real app, we would use integration.config.accessToken here.
-    // For this mock implementation, we proceed if integration exists or if it's a demo.
-    const hasIntegration = !!integration
+    // Logic to check if integration is active
+    // in real app: const accessToken = integration?.config?.accessToken;
+    const hasIntegration = !!integration && integration.config?.accessToken
 
     if (action === 'generate_meet') {
       if (!hasIntegration) {
-        // Fallback or error if integration is strictly required
-        // For UX, we'll generate a mock link
-        console.warn('No Google integration found, generating mock link')
+        console.warn(
+          'No Google integration found for user, falling back to mock link',
+        )
       }
 
-      // Mock Google Meet Link Generation
-      const meetCode = Math.random().toString(36).substring(2, 12) // e.g. 'abc-defg-hij'
-      // Format: 3-4-3
+      // Mock Google Meet Link Generation (Real implementation would use Calendar API 'conferenceData')
+      const meetCode = Math.random().toString(36).substring(2, 12)
       const formattedCode = `${meetCode.slice(0, 3)}-${meetCode.slice(3, 7)}-${meetCode.slice(7, 10)}`
       const meetLink = `https://meet.google.com/${formattedCode}`
 
@@ -52,20 +51,22 @@ Deno.serve(async (req: Request) => {
 
     if (action === 'sync_calendar') {
       if (!hasIntegration) {
+        // We allow soft fail if integration isn't there, or return specific error
         return new Response(
           JSON.stringify({
-            error: 'Google Calendar integration not connected',
+            success: false,
+            message: 'Google Calendar integration not connected',
           }),
           {
-            status: 400,
+            status: 200, // Soft fail
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           },
         )
       }
 
-      // Mock Calendar Event Creation
-      // In real implementation: Call Google Calendar API v3
+      // Mock Calendar Event Creation using tokens
       console.log('Syncing class to Google Calendar:', classDetails)
+      // In real app: use googleapis to insert event
 
       const eventId = `gcal_${Math.random().toString(36).substring(2, 15)}`
 

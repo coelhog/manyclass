@@ -15,6 +15,7 @@ import {
   Eye,
   Trash2,
   Users,
+  Upload,
 } from 'lucide-react'
 import { PageTransition } from '@/components/PageTransition'
 import { CardGridSkeleton } from '@/components/skeletons'
@@ -54,6 +55,7 @@ export default function Materials() {
     description: '',
     studentIds: [] as string[],
   })
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const { toast } = useToast()
 
   const loadData = useCallback(async () => {
@@ -84,11 +86,17 @@ export default function Materials() {
       toast({ variant: 'destructive', title: 'Título é obrigatório' })
       return
     }
+    if (!selectedFile) {
+      toast({ variant: 'destructive', title: 'Selecione um arquivo' })
+      return
+    }
+
     try {
+      // In a real app, we would upload selectedFile to Storage
       await materialService.create({
         ...newMaterial,
         fileUrl:
-          'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', // Mock PDF
+          'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', // Mock URL for now as per instructions
         fileType: 'PDF',
         studentIds:
           newMaterial.studentIds.length > 0
@@ -99,6 +107,7 @@ export default function Materials() {
       toast({ title: 'Material enviado com sucesso!' })
       setIsDialogOpen(false)
       setNewMaterial({ title: '', description: '', studentIds: [] })
+      setSelectedFile(null)
       loadData()
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao enviar material' })
@@ -174,6 +183,32 @@ export default function Materials() {
                     }
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Arquivo</Label>
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-muted/50 cursor-pointer relative">
+                    <input
+                      type="file"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      onChange={(e) =>
+                        setSelectedFile(e.target.files?.[0] || null)
+                      }
+                      accept=".pdf,.doc,.docx,.ppt,.pptx"
+                    />
+                    <div className="flex flex-col items-center">
+                      <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                      <p className="text-sm font-medium">
+                        {selectedFile
+                          ? selectedFile.name
+                          : 'Clique ou arraste o arquivo'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        PDF, DOCX, PPTX (Max 10MB)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label>Enviar para (Opcional - Padrão: Todos)</Label>
                   <ScrollArea className="h-[150px] border rounded-md p-2">
