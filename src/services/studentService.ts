@@ -15,6 +15,12 @@ export const studentService = {
     return db.get<Student>(COLLECTION_STUDENTS)
   },
 
+  getByTeacherId: async (teacherId: string): Promise<Student[]> => {
+    await delay(300)
+    const students = db.get<Student>(COLLECTION_STUDENTS)
+    return students.filter((s) => s.teacherId === teacherId)
+  },
+
   getById: async (id: string): Promise<Student | undefined> => {
     await delay(200)
     return db.getById<Student>(COLLECTION_STUDENTS, id)
@@ -58,6 +64,7 @@ export const studentService = {
     // 3. Create Student Profile
     const newStudent: Student = {
       id,
+      teacherId: student.teacherId,
       name: student.name,
       email: student.email,
       phone: student.phone,

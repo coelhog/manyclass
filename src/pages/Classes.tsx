@@ -35,6 +35,7 @@ import { PageTransition } from '@/components/PageTransition'
 import { CardGridSkeleton } from '@/components/skeletons'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useAuth } from '@/contexts/AuthContext'
 
 const DAYS = [
   { label: 'Dom', value: 0 },
@@ -56,6 +57,7 @@ const COLORS = [
 ]
 
 export default function Classes() {
+  const { user } = useAuth()
   const [classes, setClasses] = useState<ClassGroup[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -84,9 +86,10 @@ export default function Classes() {
   const { toast } = useToast()
 
   const loadClasses = useCallback(async () => {
+    if (!user) return
     setIsLoading(true)
     try {
-      const data = await classService.getAllClasses()
+      const data = await classService.getByTeacherId(user.id)
       if (Array.isArray(data)) {
         setClasses(data)
       } else {
@@ -101,7 +104,7 @@ export default function Classes() {
     } finally {
       setIsLoading(false)
     }
-  }, [toast])
+  }, [toast, user])
 
   useEffect(() => {
     loadClasses()
@@ -116,6 +119,7 @@ export default function Classes() {
       toast({ variant: 'destructive', title: 'Selecione pelo menos um dia' })
       return
     }
+    if (!user) return
 
     const daysStr = newClass.days
       .sort()
@@ -126,6 +130,7 @@ export default function Classes() {
     try {
       await classService.createClass({
         ...newClass,
+        teacherId: user.id,
         schedule: scheduleStr,
         status: 'active',
         studentIds: [],

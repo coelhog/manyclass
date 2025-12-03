@@ -33,6 +33,12 @@ export const classService = {
     return db.get<ClassGroup>(COLLECTION_CLASSES)
   },
 
+  getByTeacherId: async (teacherId: string): Promise<ClassGroup[]> => {
+    await delay(300)
+    const classes = db.get<ClassGroup>(COLLECTION_CLASSES)
+    return classes.filter((c) => c.teacherId === teacherId)
+  },
+
   getClassById: async (id: string): Promise<ClassGroup | undefined> => {
     return db.getById<ClassGroup>(COLLECTION_CLASSES, id)
   },

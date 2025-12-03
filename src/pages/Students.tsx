@@ -49,8 +49,10 @@ import { Link } from 'react-router-dom'
 import { PageTransition } from '@/components/PageTransition'
 import { TableSkeleton } from '@/components/skeletons'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Students() {
+  const { user } = useAuth()
   const [students, setStudents] = useState<Student[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -78,16 +80,18 @@ export default function Students() {
   const { toast } = useToast()
 
   const loadStudents = useCallback(async () => {
+    if (!user) return
     setIsLoading(true)
     try {
-      const data = await studentService.getAll()
+      // Use getByTeacherId for current user data isolation
+      const data = await studentService.getByTeacherId(user.id)
       setStudents(data)
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao carregar alunos' })
     } finally {
       setIsLoading(false)
     }
-  }, [toast])
+  }, [toast, user])
 
   useEffect(() => {
     loadStudents()
@@ -115,6 +119,7 @@ export default function Students() {
       })
       return
     }
+    if (!user) return
 
     // Auto-generate password if not provided
     const password = newStudent.password || generatePassword()
@@ -122,6 +127,7 @@ export default function Students() {
     try {
       await studentService.create({
         ...newStudent,
+        teacherId: user.id,
         password,
         status: 'active',
         avatar: `https://img.usecurling.com/i?q=user&color=gray&shape=fill`,
@@ -168,9 +174,11 @@ export default function Students() {
       })
       return
     }
+    if (!user) return
 
     try {
       const studentsToCreate = validStudents.map((s) => ({
+        teacherId: user.id,
         name: s.name,
         email:
           s.email || `${s.name.toLowerCase().replace(/\s/g, '.')}@email.com`,
@@ -186,6 +194,7 @@ export default function Students() {
         await studentService.createBulk(studentsToCreate)
 
       // Handle Class Associations (existing logic)
+      // Fetch all classes to match group names (using simple match here)
       const classes = await classService.getAllClasses()
       const studentsByGroup = validStudents.reduce(
         (acc, curr, idx) => {
@@ -210,6 +219,7 @@ export default function Students() {
         } else {
           await classService.createClass({
             name: groupName,
+            teacherId: user.id,
             days: [],
             startTime: '09:00',
             duration: 60,
@@ -236,11 +246,13 @@ export default function Students() {
   }
 
   const handleImport = async () => {
+    if (!user) return
     toast({ title: 'Importando alunos...' })
     setTimeout(async () => {
       try {
         const mockImported = [
           {
+            teacherId: user.id,
             name: 'Importado 1',
             email: 'imp1@test.com',
             phone: '1199999999',

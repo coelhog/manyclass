@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { mockClasses } from '@/lib/mock-data'
 import { BookOpen, CheckCircle, DollarSign, Users, Video } from 'lucide-react'
 import {
   ChartContainer,
@@ -19,15 +18,10 @@ import { PageTransition } from '@/components/PageTransition'
 import { DashboardSkeleton } from '@/components/skeletons'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-
-const chartData = [
-  { month: 'Jan', revenue: 1200 },
-  { month: 'Fev', revenue: 1500 },
-  { month: 'Mar', revenue: 1800 },
-  { month: 'Abr', revenue: 2200 },
-  { month: 'Mai', revenue: 2500 },
-  { month: 'Jun', revenue: 2800 },
-]
+import { studentService } from '@/services/studentService'
+import { classService } from '@/services/classService'
+import { taskService } from '@/services/taskService'
+import { ClassGroup } from '@/types'
 
 const chartConfig = {
   revenue: {
@@ -39,14 +33,73 @@ const chartConfig = {
 export default function Dashboard() {
   const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
+  const [totalStudents, setTotalStudents] = useState(0)
+  const [totalClasses, setTotalClasses] = useState(0)
+  const [activeClasses, setActiveClasses] = useState<ClassGroup[]>([])
+  const [monthlyRevenue, setMonthlyRevenue] = useState(0)
+  const [pendingTasksCount, setPendingTasksCount] = useState(0)
+
+  // Mock chart data for now, in a real scenario this would be calculated from historical payments/classes
+  const chartData = [
+    { month: 'Jan', revenue: 1200 },
+    { month: 'Fev', revenue: 1500 },
+    { month: 'Mar', revenue: 1800 },
+    { month: 'Abr', revenue: 2200 },
+    { month: 'Mai', revenue: 2500 },
+    { month: 'Jun', revenue: 2800 },
+  ]
 
   useEffect(() => {
-    // Simulate data fetching
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
-    return () => clearTimeout(timer)
-  }, [])
+    const loadDashboardData = async () => {
+      if (!user) return
+      setIsLoading(true)
+      try {
+        // Fetch data for logged-in teacher
+        const [students, classes, tasks] = await Promise.all([
+          studentService.getByTeacherId(user.id),
+          classService.getByTeacherId(user.id),
+          taskService.getAllTasks(), // Filtering tasks would be better if taskService supported it
+        ])
+
+        setTotalStudents(students.length)
+        setTotalClasses(classes.length)
+        setActiveClasses(classes.filter((c) => c.status === 'active'))
+
+        // Calculate Revenue (Monthly Projection)
+        let revenue = 0
+        classes
+          .filter((c) => c.status === 'active')
+          .forEach((c) => {
+            if (c.billingModel === 'per_class') {
+              revenue += c.price
+            } else if (c.billingModel === 'per_student') {
+              // Sum specific prices for each student
+              c.studentIds.forEach((sid) => {
+                const studentPrice = c.customStudentPrices?.[sid] ?? c.price
+                revenue += studentPrice
+              })
+            }
+          })
+        setMonthlyRevenue(revenue)
+
+        // Calculate pending tasks (mock logic since tasks don't link to teacher directly in mock yet)
+        // Assuming tasks belong to teacher's classes
+        const teacherClassIds = classes.map((c) => c.id)
+        const teacherTasks = tasks.filter(
+          (t) => t.classId && teacherClassIds.includes(t.classId),
+        )
+        setPendingTasksCount(
+          teacherTasks.filter((t) => t.status === 'open').length,
+        )
+      } catch (error) {
+        console.error('Error loading dashboard data', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadDashboardData()
+  }, [user])
 
   if (user?.role === 'student') {
     return <StudentDashboard />
@@ -79,9 +132,9 @@ export default function Dashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
+            <div className="text-2xl font-bold">{totalStudents}</div>
             <p className="text-xs text-muted-foreground">
-              +2 desde o último mês
+              Ativos em suas turmas
             </p>
           </CardContent>
         </Card>
@@ -91,8 +144,10 @@ export default function Dashboard() {
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">6</div>
-            <p className="text-xs text-muted-foreground">3 aulas hoje</p>
+            <div className="text-2xl font-bold">{activeClasses.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {totalClasses} turmas no total
+            </p>
           </CardContent>
         </Card>
         <Card className="hover:shadow-md transition-shadow duration-300">
@@ -103,21 +158,23 @@ export default function Dashboard() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">4 para corrigir</p>
+            <div className="text-2xl font-bold">{pendingTasksCount}</div>
+            <p className="text-xs text-muted-foreground">Aguardando revisão</p>
           </CardContent>
         </Card>
         <Card className="hover:shadow-md transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Receita Mensal
+              Receita Mensal (Est.)
             </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 4.250,00</div>
+            <div className="text-2xl font-bold">
+              R$ {monthlyRevenue.toFixed(2).replace('.', ',')}
+            </div>
             <p className="text-xs text-muted-foreground">
-              +15% que o mês passado
+              Baseado nas turmas ativas
             </p>
           </CardContent>
         </Card>
@@ -193,7 +250,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-8">
-              {mockClasses.map((cls) => (
+              {activeClasses.slice(0, 5).map((cls) => (
                 <div
                   key={cls.id}
                   className="flex items-center group cursor-pointer"
@@ -214,6 +271,11 @@ export default function Dashboard() {
                   </div>
                 </div>
               ))}
+              {activeClasses.length === 0 && (
+                <div className="text-center text-muted-foreground py-4">
+                  Nenhuma turma ativa encontrada.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

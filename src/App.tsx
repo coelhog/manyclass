@@ -36,6 +36,7 @@ import AdminMetrics from './pages/admin/AdminMetrics'
 import AdminSettings from './pages/admin/AdminSettings'
 import AdminOnboarding from './pages/admin/AdminOnboarding'
 import AdminResponses from './pages/admin/AdminResponses'
+import AdminClasses from './pages/admin/AdminClasses'
 
 const App = () => (
   <BrowserRouter
@@ -61,6 +62,7 @@ const App = () => (
               <Route index element={<AdminDashboard />} />
               <Route path="teachers" element={<TeachersList />} />
               <Route path="teachers/:id" element={<TeacherEdit />} />
+              <Route path="classes" element={<AdminClasses />} />
               <Route path="metrics" element={<AdminMetrics />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="onboarding" element={<AdminOnboarding />} />

@@ -32,6 +32,7 @@ export interface User {
 
 export interface Student {
   id: string
+  teacherId?: string
   name: string
   email: string
   phone: string
@@ -56,6 +57,7 @@ export interface Subscription {
 
 export interface ClassGroup {
   id: string
+  teacherId?: string
   name: string
   schedule: string // Display string (e.g., "Seg/Qua 19:00")
   days: number[] // 0-6 (Sun-Sat)

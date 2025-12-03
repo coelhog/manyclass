@@ -9,6 +9,7 @@ import {
   BarChart,
   FileText,
   List,
+  GraduationCap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -24,6 +25,11 @@ export default function AdminLayout() {
   const navItems = [
     { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
     { title: 'Professores', url: '/admin/teachers', icon: Users },
+    {
+      title: 'Gerenciamento de Aulas',
+      url: '/admin/classes',
+      icon: GraduationCap,
+    },
     { title: 'Métricas', url: '/admin/metrics', icon: BarChart },
     { title: 'Onboarding', url: '/admin/onboarding', icon: FileText },
     { title: 'Respostas', url: '/admin/responses', icon: List },
