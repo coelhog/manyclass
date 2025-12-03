@@ -31,6 +31,9 @@ import {
   Upload,
   FileDown,
   UserPlus,
+  Copy,
+  Check,
+  Key,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -54,6 +57,11 @@ export default function Students() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
+  const [createdStudent, setCreatedStudent] = useState<{
+    email: string
+    password?: string
+  } | null>(null)
+  const [isCredentialsOpen, setIsCredentialsOpen] = useState(false)
 
   const [newStudent, setNewStudent] = useState({
     name: '',
@@ -89,6 +97,16 @@ export default function Students() {
     student.name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
+  const generatePassword = () => {
+    const chars =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$'
+    let password = ''
+    for (let i = 0; i < 8; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return password
+  }
+
   const handleCreate = async () => {
     if (!newStudent.name || !newStudent.email) {
       toast({
@@ -97,15 +115,28 @@ export default function Students() {
       })
       return
     }
+
+    // Auto-generate password if not provided
+    const password = newStudent.password || generatePassword()
+
     try {
       await studentService.create({
         ...newStudent,
+        password,
         status: 'active',
         avatar: `https://img.usecurling.com/i?q=user&color=gray&shape=fill`,
-        joinedAt: new Date().toISOString().split('T')[0],
+        joinedAt: new Date().toISOString(),
       })
-      toast({ title: 'Aluno adicionado com sucesso!' })
+
+      setCreatedStudent({
+        email: newStudent.email,
+        password: password,
+      })
+
       setIsDialogOpen(false)
+      setIsCredentialsOpen(true)
+
+      toast({ title: 'Aluno criado com sucesso!' })
       loadStudents()
       setNewStudent({
         name: '',
@@ -114,9 +145,18 @@ export default function Students() {
         level: 'A1',
         password: '',
       })
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Erro ao criar aluno' })
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao criar aluno',
+        description: error.message,
+      })
     }
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    toast({ title: 'Copiado para a área de transferência' })
   }
 
   const handleBulkCreate = async () => {
@@ -139,17 +179,19 @@ export default function Students() {
         status: 'active' as const,
         avatar: `https://img.usecurling.com/i?q=user&color=gray&shape=fill`,
         joinedAt: new Date().toISOString().split('T')[0],
-        password: 'password123', // Default password for bulk
+        password: generatePassword(), // Generate unique passwords for each
       }))
 
-      const createdStudents = await studentService.createBulk(studentsToCreate)
+      const createdStudentsData =
+        await studentService.createBulk(studentsToCreate)
 
+      // Handle Class Associations (existing logic)
       const classes = await classService.getAllClasses()
       const studentsByGroup = validStudents.reduce(
         (acc, curr, idx) => {
           if (curr.groupName) {
             if (!acc[curr.groupName]) acc[curr.groupName] = []
-            acc[curr.groupName].push(createdStudents[idx].id)
+            acc[curr.groupName].push(createdStudentsData[idx].id)
           }
           return acc
         },
@@ -206,7 +248,7 @@ export default function Students() {
             status: 'active' as const,
             avatar: '',
             joinedAt: new Date().toISOString(),
-            password: 'password123',
+            password: generatePassword(),
           },
         ]
         await studentService.createBulk(mockImported)
@@ -297,8 +339,8 @@ export default function Students() {
               <DialogHeader>
                 <DialogTitle>Adicionar Múltiplos Alunos</DialogTitle>
                 <DialogDescription>
-                  Preencha os dados dos alunos abaixo. Se o "Nome do Grupo" for
-                  informado, o aluno será adicionado à turma correspondente.
+                  Preencha os dados dos alunos abaixo. Senhas serão geradas
+                  automaticamente.
                 </DialogDescription>
               </DialogHeader>
               <ScrollArea className="h-[300px] pr-4">
@@ -369,7 +411,7 @@ export default function Students() {
               <DialogHeader>
                 <DialogTitle>Adicionar Novo Aluno</DialogTitle>
                 <DialogDescription>
-                  Preencha os dados do aluno para adicioná-lo ao sistema.
+                  Crie uma conta para o aluno acessar a plataforma.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -429,21 +471,95 @@ export default function Students() {
                   <Label htmlFor="password" className="text-right">
                     Senha
                   </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    className="col-span-3"
-                    value={newStudent.password}
-                    onChange={(e) =>
-                      setNewStudent({ ...newStudent, password: e.target.value })
-                    }
-                    placeholder="Opcional"
-                  />
+                  <div className="col-span-3 flex gap-2">
+                    <Input
+                      id="password"
+                      value={newStudent.password}
+                      onChange={(e) =>
+                        setNewStudent({
+                          ...newStudent,
+                          password: e.target.value,
+                        })
+                      }
+                      placeholder="Gerar automaticamente"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() =>
+                        setNewStudent({
+                          ...newStudent,
+                          password: generatePassword(),
+                        })
+                      }
+                      title="Gerar senha"
+                    >
+                      <Key className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
               <DialogFooter>
                 <Button type="submit" onClick={handleCreate}>
-                  Salvar
+                  Criar Conta
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Credentials Display Dialog */}
+          <Dialog open={isCredentialsOpen} onOpenChange={setIsCredentialsOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-green-600">
+                  <Check className="h-5 w-5" /> Conta Criada com Sucesso
+                </DialogTitle>
+                <DialogDescription>
+                  Envie estas credenciais para o aluno acessar a plataforma.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="bg-muted p-4 rounded-lg space-y-3 my-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Email</Label>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-background px-2 py-1 rounded border flex-1">
+                      {createdStudent?.email}
+                    </code>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() =>
+                        copyToClipboard(createdStudent?.email || '')
+                      }
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Senha</Label>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-background px-2 py-1 rounded border flex-1 font-mono">
+                      {createdStudent?.password}
+                    </code>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() =>
+                        copyToClipboard(createdStudent?.password || '')
+                      }
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => setIsCredentialsOpen(false)}>
+                  Concluído
                 </Button>
               </DialogFooter>
             </DialogContent>

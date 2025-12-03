@@ -10,14 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Search, Loader2 } from 'lucide-react'
+import { Search, Loader2, BookOpen } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -26,7 +19,8 @@ export default function Register() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'teacher' | 'student'>('student')
+  // Role is now hardcoded to 'teacher' for public registration
+  const role = 'teacher'
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
   const navigate = useNavigate()
@@ -37,15 +31,15 @@ export default function Register() {
     try {
       await register(name, email, password, role)
       toast({
-        title: 'Conta criada com sucesso!',
-        description: 'Bem-vindo ao Manyclass.',
+        title: 'Conta de professor criada!',
+        description: 'Bem-vindo ao Manyclass. Comece a gerenciar seus alunos.',
       })
       navigate('/')
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Erro ao criar conta',
-        description: 'Tente novamente mais tarde.',
+        description: error.message || 'Tente novamente mais tarde.',
       })
     } finally {
       setIsLoading(false)
@@ -59,12 +53,16 @@ export default function Register() {
           <div className="flex justify-center mb-4">
             <div className="bg-primary/20 p-3 rounded-full">
               <div className="bg-primary text-primary-foreground p-2 rounded-md shadow-sm">
-                <Search className="w-6 h-6" />
+                <BookOpen className="w-6 h-6" />
               </div>
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Criar Conta</CardTitle>
-          <CardDescription>Junte-se ao Manyclass</CardDescription>
+          <CardTitle className="text-2xl font-bold">
+            Cadastro de Professor
+          </CardTitle>
+          <CardDescription>
+            Crie sua conta para gerenciar aulas e alunos
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleRegister} className="space-y-4">
@@ -74,6 +72,7 @@ export default function Register() {
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                placeholder="Seu nome"
                 required
               />
             </div>
@@ -84,6 +83,7 @@ export default function Register() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
                 required
               />
             </div>
@@ -94,24 +94,13 @@ export default function Register() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Eu sou</Label>
-              <Select
-                value={role}
-                onValueChange={(v) => setRole(v as 'teacher' | 'student')}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="student">Aluno</SelectItem>
-                  <SelectItem value="teacher">Professor</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
+            {/* Role selection removed to enforce teacher-only registration */}
+
             <Button
               type="submit"
               className="w-full transition-all hover:scale-[1.02]"
@@ -120,7 +109,7 @@ export default function Register() {
               {isLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                'Cadastrar'
+                'Cadastrar como Professor'
               )}
             </Button>
             <div className="text-center text-sm">
@@ -128,6 +117,9 @@ export default function Register() {
               <Link to="/login" className="text-primary hover:underline">
                 Faça login
               </Link>
+            </div>
+            <div className="text-center text-xs text-muted-foreground mt-4">
+              É um aluno? Peça para seu professor criar sua conta.
             </div>
           </form>
         </CardContent>
