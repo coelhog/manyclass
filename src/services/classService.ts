@@ -5,7 +5,7 @@ import {
   UpdateEventDTO,
   Subscription,
 } from '@/types'
-import { mockClasses, mockSubscriptions } from '@/lib/mock-data'
+import { db } from '@/lib/db'
 import { studentService } from './studentService'
 import { taskService } from './taskService'
 import { integrationService } from './integrationService'
@@ -20,38 +20,25 @@ import {
   parseISO,
 } from 'date-fns'
 
-const CLASSES_KEY = 'manyclass_classes'
-const EVENTS_KEY = 'manyclass_events'
-
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+const COLLECTION_CLASSES = 'classes'
+const COLLECTION_EVENTS = 'events'
 const DAYS_MAP = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 export const classService = {
   // Classes Management
   getAllClasses: async (): Promise<ClassGroup[]> => {
     await delay(500)
-    try {
-      const stored = localStorage.getItem(CLASSES_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        return Array.isArray(parsed) ? parsed : mockClasses
-      }
-    } catch (e) {
-      console.error('Error loading classes', e)
-    }
-    localStorage.setItem(CLASSES_KEY, JSON.stringify(mockClasses))
-    return mockClasses
+    return db.get<ClassGroup>(COLLECTION_CLASSES)
   },
 
   getClassById: async (id: string): Promise<ClassGroup | undefined> => {
-    const classes = await classService.getAllClasses()
-    return classes.find((c) => c.id === id)
+    return db.getById<ClassGroup>(COLLECTION_CLASSES, id)
   },
 
   createClass: async (data: Omit<ClassGroup, 'id'>): Promise<ClassGroup> => {
     await delay(500)
-    const classes = await classService.getAllClasses()
 
     // Google Meet Integration
     let meetLink = undefined
@@ -66,8 +53,7 @@ export const classService = {
       id: Math.random().toString(36).substr(2, 9),
       meetLink,
     }
-    const updated = [...classes, newClass]
-    localStorage.setItem(CLASSES_KEY, JSON.stringify(updated))
+    db.insert(COLLECTION_CLASSES, newClass)
 
     // Auto-generate subscriptions logic
     if (newClass.billingModel === 'per_student') {
@@ -93,34 +79,28 @@ export const classService = {
     data: Partial<ClassGroup>,
   ): Promise<ClassGroup> => {
     await delay(300)
-    const classes = await classService.getAllClasses()
-    const index = classes.findIndex((c) => c.id === id)
-    if (index === -1) throw new Error('Class not found')
+    const cls = db.getById<ClassGroup>(COLLECTION_CLASSES, id)
+    if (!cls) throw new Error('Class not found')
 
     // Check if Google Meet is connected and link is missing
     const isMeetConnected = await integrationService.isConnected('google_meet')
-    let meetLink = classes[index].meetLink
+    let meetLink = cls.meetLink
     if (isMeetConnected && !meetLink) {
       meetLink = `https://meet.google.com/${Math.random().toString(36).substr(2, 3)}-${Math.random().toString(36).substr(2, 4)}-${Math.random().toString(36).substr(2, 3)}`
     }
 
     // Check if new students were added to generate subscriptions
-    const oldStudentIds = classes[index].studentIds
+    const oldStudentIds = cls.studentIds
     const newStudentIds = data.studentIds || []
 
     const addedStudents = newStudentIds.filter(
-      (id) => !oldStudentIds.includes(id),
+      (sid) => !oldStudentIds.includes(sid),
     )
 
-    if (
-      addedStudents.length > 0 &&
-      classes[index].billingModel === 'per_student'
-    ) {
+    if (addedStudents.length > 0 && cls.billingModel === 'per_student') {
       for (const studentId of addedStudents) {
         // Check for custom price override
-        const price =
-          classes[index].customStudentPrices?.[studentId] ??
-          classes[index].price
+        const price = cls.customStudentPrices?.[studentId] ?? cls.price
 
         await studentService.createSubscription({
           studentId,
@@ -133,7 +113,7 @@ export const classService = {
       }
     }
 
-    const updated = { ...classes[index], ...data, meetLink }
+    let updated = { ...cls, ...data, meetLink }
 
     // Update schedule string if days/time changed
     if (data.days || data.startTime) {
@@ -141,9 +121,7 @@ export const classService = {
       updated.schedule = `${daysStr} ${updated.startTime}`
     }
 
-    classes[index] = updated
-    localStorage.setItem(CLASSES_KEY, JSON.stringify(classes))
-    return updated
+    return db.update(COLLECTION_CLASSES, id, updated)
   },
 
   updateStudentPrice: async (
@@ -151,28 +129,22 @@ export const classService = {
     studentId: string,
     price: number,
   ): Promise<void> => {
-    const classes = await classService.getAllClasses()
-    const index = classes.findIndex((c) => c.id === classId)
-    if (index === -1) throw new Error('Class not found')
+    const cls = db.getById<ClassGroup>(COLLECTION_CLASSES, classId)
+    if (!cls) throw new Error('Class not found')
 
-    const cls = classes[index]
     const customPrices = cls.customStudentPrices || {}
     customPrices[studentId] = price
 
-    const updated = { ...cls, customStudentPrices: customPrices }
-    classes[index] = updated
-    localStorage.setItem(CLASSES_KEY, JSON.stringify(classes))
+    db.update(COLLECTION_CLASSES, classId, {
+      customStudentPrices: customPrices,
+    })
   },
 
   // Events Management
   getEvents: async (): Promise<CalendarEvent[]> => {
     await delay(300)
     try {
-      let events: CalendarEvent[] = []
-      const stored = localStorage.getItem(EVENTS_KEY)
-      if (stored) {
-        events = JSON.parse(stored)
-      }
+      const events = db.get<CalendarEvent>(COLLECTION_EVENTS)
 
       // 1. Fetch tasks with due dates and convert to events
       const tasks = await taskService.getAllTasks()
@@ -183,7 +155,7 @@ export const classService = {
           title: t.title,
           description: t.description,
           start_time: t.dueDate!,
-          end_time: t.dueDate!, // Tasks are point-in-time
+          end_time: t.dueDate!,
           type: 'task',
           student_ids: t.studentId ? [t.studentId] : [],
           color: t.color || 'blue',
@@ -201,14 +173,12 @@ export const classService = {
 
       const classEvents: CalendarEvent[] = []
 
-      // Generate for current month +/- 1 month
       const today = new Date()
       const start = startOfMonth(subMonths(today, 1))
       const end = endOfMonth(addMonths(today, 1))
       const interval = eachDayOfInterval({ start, end })
 
-      // Get all subscriptions to check payment periods
-      const allSubscriptions = await getAllSubscriptions()
+      const allSubscriptions = db.get<Subscription>('subscriptions')
 
       classes.forEach((cls) => {
         if (cls.status !== 'active') return
@@ -220,7 +190,7 @@ export const classService = {
             startTime.setHours(hours, minutes, 0, 0)
             const endTime = addMinutes(startTime, cls.duration || 60)
 
-            // Filter students based on their subscription period (Payment-Based Scheduling)
+            // Filter students based on their subscription period
             const activeStudentIds = cls.studentIds.filter((studentId) => {
               if (cls.billingModel !== 'per_student') return true
 
@@ -229,7 +199,6 @@ export const classService = {
               )
               if (!sub) return false
 
-              // Check if date is within subscription period
               const subStart = parseISO(sub.startDate)
               const subEnd = parseISO(sub.nextBillingDate)
 
@@ -262,21 +231,16 @@ export const classService = {
         })
       })
 
-      const allEvents = [...events, ...taskEvents, ...classEvents]
-
-      return allEvents
+      return [...events, ...taskEvents, ...classEvents]
     } catch (e) {
       console.error('Error loading events', e)
+      return []
     }
-    return []
   },
 
   createEvent: async (data: CreateEventDTO): Promise<CalendarEvent> => {
     await delay(300)
-    const stored = localStorage.getItem(EVENTS_KEY)
-    const rawEvents: CalendarEvent[] = stored ? JSON.parse(stored) : []
 
-    // Check Integration Status
     const calendarIntegration =
       await integrationService.getByProvider('google_calendar')
     const isCalendarConnected = calendarIntegration?.status === 'connected'
@@ -289,42 +253,17 @@ export const classService = {
       color: data.color || 'blue',
       isSynced: isCalendarConnected && shouldSyncToPersonal,
     }
-    const updated = [...rawEvents, newEvent]
-    localStorage.setItem(EVENTS_KEY, JSON.stringify(updated))
-    return newEvent
+
+    return db.insert(COLLECTION_EVENTS, newEvent)
   },
 
   updateEvent: async (data: UpdateEventDTO): Promise<CalendarEvent> => {
     await delay(300)
-    const stored = localStorage.getItem(EVENTS_KEY)
-    const rawEvents: CalendarEvent[] = stored ? JSON.parse(stored) : []
-
-    const index = rawEvents.findIndex((e) => e.id === data.id)
-    if (index === -1) throw new Error('Event not found')
-
-    const updated = { ...rawEvents[index], ...data }
-    rawEvents[index] = updated
-    localStorage.setItem(EVENTS_KEY, JSON.stringify(rawEvents))
-    return updated
+    return db.update(COLLECTION_EVENTS, data.id, data)
   },
 
   deleteEvent: async (id: string): Promise<void> => {
     await delay(300)
-    const stored = localStorage.getItem(EVENTS_KEY)
-    const rawEvents: CalendarEvent[] = stored ? JSON.parse(stored) : []
-    const filtered = rawEvents.filter((e) => e.id !== id)
-    localStorage.setItem(EVENTS_KEY, JSON.stringify(filtered))
+    db.delete(COLLECTION_EVENTS, id)
   },
-}
-
-// Helper to access subscriptions
-async function getAllSubscriptions(): Promise<Subscription[]> {
-  try {
-    const SUBSCRIPTIONS_KEY = 'manyclass_subscriptions'
-    const stored = localStorage.getItem(SUBSCRIPTIONS_KEY)
-    if (stored) return JSON.parse(stored)
-    return mockSubscriptions
-  } catch (e) {
-    return []
-  }
 }

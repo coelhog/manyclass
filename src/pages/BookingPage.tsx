@@ -12,6 +12,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { scheduleService } from '@/services/scheduleService'
 import { classService } from '@/services/classService'
+import { teacherService } from '@/services/teacherService'
+import { User } from '@/types'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
@@ -23,10 +25,10 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
-import { mockUser } from '@/lib/mock-data' // Mock teacher data
 
 export default function BookingPage() {
   const { teacherId } = useParams<{ teacherId: string }>()
+  const [teacher, setTeacher] = useState<User | null>(null)
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [availableSlots, setAvailableSlots] = useState<string[]>([])
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
@@ -39,6 +41,23 @@ export default function BookingPage() {
   const [isBooking, setIsBooking] = useState(false)
 
   const { toast } = useToast()
+
+  useEffect(() => {
+    const loadTeacher = async () => {
+      if (teacherId) {
+        const t = await teacherService.getById(teacherId)
+        // Fallback for demo if 'demo' or not found, assuming the main teacher in DB or a placeholder
+        if (t) {
+          setTeacher(t)
+        } else if (teacherId === 'demo') {
+          // Fetch first available teacher as demo
+          const teachers = await teacherService.getAll()
+          if (teachers.length > 0) setTeacher(teachers[0])
+        }
+      }
+    }
+    loadTeacher()
+  }, [teacherId])
 
   useEffect(() => {
     if (date) {
@@ -78,7 +97,7 @@ export default function BookingPage() {
         type: 'class',
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
-        student_ids: [], // In a real app, we would create/link a student user
+        student_ids: [],
       })
 
       setStep('success')
@@ -89,8 +108,14 @@ export default function BookingPage() {
     }
   }
 
-  // Mock teacher info (in real app, fetch by teacherId)
-  const teacher = mockUser
+  if (!teacher && teacherId !== 'demo') {
+    // In real app, loading state for teacher
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Carregando...
+      </div>
+    )
+  }
 
   if (step === 'success') {
     return (
@@ -139,11 +164,13 @@ export default function BookingPage() {
           <CardHeader className="text-center border-b bg-muted/10">
             <div className="flex justify-center mb-4">
               <Avatar className="h-24 w-24">
-                <AvatarImage src={teacher.avatar} />
-                <AvatarFallback>PF</AvatarFallback>
+                <AvatarImage src={teacher?.avatar} />
+                <AvatarFallback>
+                  {teacher?.name?.charAt(0) || 'P'}
+                </AvatarFallback>
               </Avatar>
             </div>
-            <CardTitle>{teacher.name}</CardTitle>
+            <CardTitle>{teacher?.name || 'Professor'}</CardTitle>
             <CardDescription>Professor de Idiomas</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">

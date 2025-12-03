@@ -1,8 +1,9 @@
 import { Integration, IntegrationConfig, IntegrationProvider } from '@/types'
-
-const INTEGRATIONS_KEY = 'manyclass_integrations'
+import { db } from '@/lib/db'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const COLLECTION_INTEGRATIONS = 'integrations'
 
 const defaultIntegrations: Integration[] = [
   {
@@ -62,12 +63,12 @@ const defaultIntegrations: Integration[] = [
 export const integrationService = {
   getAll: async (): Promise<Integration[]> => {
     await delay(500)
-    const stored = localStorage.getItem(INTEGRATIONS_KEY)
-    if (stored) {
-      const storedIntegrations = JSON.parse(stored) as Integration[]
-      // Merge with default to ensure all providers exist if new ones are added
+    const integrations = db.get<Integration>(COLLECTION_INTEGRATIONS)
+
+    if (integrations.length > 0) {
+      // Merge with default to ensure all providers exist
       return defaultIntegrations.map((def) => {
-        const existing = storedIntegrations.find((s) => s.id === def.id)
+        const existing = integrations.find((s) => s.id === def.id)
         return existing
           ? {
               ...def,
@@ -77,7 +78,8 @@ export const integrationService = {
           : def
       })
     }
-    localStorage.setItem(INTEGRATIONS_KEY, JSON.stringify(defaultIntegrations))
+
+    db.set(COLLECTION_INTEGRATIONS, defaultIntegrations)
     return defaultIntegrations
   },
 
@@ -97,7 +99,7 @@ export const integrationService = {
     id: string,
     config?: IntegrationConfig,
   ): Promise<Integration> => {
-    await delay(1000) // Simulate network request
+    await delay(1000)
     const integrations = await integrationService.getAll()
     const index = integrations.findIndex((i) => i.id === id)
     if (index === -1) throw new Error('Integration not found')
@@ -112,8 +114,11 @@ export const integrationService = {
       connectedAt: new Date().toISOString(),
       config: { ...integrations[index].config, ...config },
     }
+
+    // Persist full list back
     integrations[index] = updated
-    localStorage.setItem(INTEGRATIONS_KEY, JSON.stringify(integrations))
+    db.set(COLLECTION_INTEGRATIONS, integrations)
+
     return updated
   },
 
@@ -131,8 +136,10 @@ export const integrationService = {
       connectedAt: undefined,
       config: defaultIntegrations.find((d) => d.id === id)?.config,
     }
+
     integrations[index] = updated
-    localStorage.setItem(INTEGRATIONS_KEY, JSON.stringify(integrations))
+    db.set(COLLECTION_INTEGRATIONS, integrations)
+
     return updated
   },
 
@@ -149,16 +156,15 @@ export const integrationService = {
       ...integrations[index],
       config: { ...integrations[index].config, ...config },
     }
+
     integrations[index] = updated
-    localStorage.setItem(INTEGRATIONS_KEY, JSON.stringify(integrations))
+    db.set(COLLECTION_INTEGRATIONS, integrations)
+
     return updated
   },
 
   isConnected: async (provider: IntegrationProvider): Promise<boolean> => {
-    // Helper mostly for internal service use (synchronous check if possible, but storage is sync)
-    const stored = localStorage.getItem(INTEGRATIONS_KEY)
-    if (!stored) return false
-    const integrations = JSON.parse(stored) as Integration[]
+    const integrations = db.get<Integration>(COLLECTION_INTEGRATIONS)
     const integration = integrations.find((i) => i.provider === provider)
     return integration?.status === 'connected'
   },
