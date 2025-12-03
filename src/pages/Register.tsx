@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Search, Loader2, BookOpen } from 'lucide-react'
+import { Loader2, BookOpen } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -24,6 +24,13 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
   const navigate = useNavigate()
+
+  // Reset form fields on page load/access
+  useEffect(() => {
+    setName('')
+    setEmail('')
+    setPassword('')
+  }, [])
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,41 +72,49 @@ export default function Register() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleRegister} className="space-y-4">
+          <form
+            onSubmit={handleRegister}
+            className="space-y-4"
+            autoComplete="off"
+          >
             <div className="space-y-2">
               <Label htmlFor="name">Nome Completo</Label>
               <Input
                 id="name"
+                name="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Seu nome"
                 required
+                autoComplete="off"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
                 required
+                autoComplete="off"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                autoComplete="new-password"
               />
             </div>
-
-            {/* Role selection removed to enforce teacher-only registration */}
 
             <Button
               type="submit"
