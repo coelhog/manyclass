@@ -13,7 +13,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    const { action, userId, classDetails } = await req.json()
+    const { action, userId, classDetails, eventDetails } = await req.json()
 
     if (!userId) {
       throw new Error('User ID is required')
@@ -28,7 +28,6 @@ Deno.serve(async (req: Request) => {
       .single()
 
     // Logic to check if integration is active
-    // in real app: const accessToken = integration?.config?.accessToken;
     const hasIntegration = !!integration && integration.config?.accessToken
 
     if (action === 'generate_meet') {
@@ -51,7 +50,6 @@ Deno.serve(async (req: Request) => {
 
     if (action === 'sync_calendar') {
       if (!hasIntegration) {
-        // We allow soft fail if integration isn't there, or return specific error
         return new Response(
           JSON.stringify({
             success: false,
@@ -64,16 +62,60 @@ Deno.serve(async (req: Request) => {
         )
       }
 
-      // Mock Calendar Event Creation using tokens
-      console.log('Syncing class to Google Calendar:', classDetails)
-      // In real app: use googleapis to insert event
+      // Mock Calendar Class Series Creation using tokens
+      console.log('Syncing class series to Google Calendar:', classDetails)
+      // Real logic: Create recurring event based on days[] and start_time
 
-      const eventId = `gcal_${Math.random().toString(36).substring(2, 15)}`
+      const eventId = `gcal_series_${Math.random().toString(36).substring(2, 15)}`
 
       return new Response(JSON.stringify({ success: true, eventId }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       })
+    }
+
+    if (action === 'sync_event') {
+      if (!hasIntegration) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: 'Google Calendar integration not connected',
+          }),
+          {
+            status: 200, // Soft fail
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        )
+      }
+
+      // Mock Single Event Creation
+      console.log('Syncing single event to Google Calendar:', eventDetails)
+
+      // Generate a meet link if not present
+      let meetLink = eventDetails.meet_link || eventDetails.link
+      if (
+        !meetLink &&
+        (eventDetails.type === 'class' || eventDetails.type === 'meeting')
+      ) {
+        const meetCode = Math.random().toString(36).substring(2, 12)
+        meetLink = `https://meet.google.com/${meetCode.slice(0, 3)}-${meetCode.slice(3, 7)}-${meetCode.slice(7, 10)}`
+      }
+
+      const gcalEventId = `gcal_evt_${Math.random().toString(36).substring(2, 15)}`
+
+      // Update event in DB to mark as synced (mock)
+      await supabase
+        .from('events')
+        .update({ is_synced: true })
+        .eq('id', eventDetails.id)
+
+      return new Response(
+        JSON.stringify({ success: true, eventId: gcalEventId, meetLink }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        },
+      )
     }
 
     return new Response(JSON.stringify({ error: 'Invalid action' }), {

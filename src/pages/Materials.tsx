@@ -16,6 +16,7 @@ import {
   Trash2,
   Users,
   Upload,
+  Loader2,
 } from 'lucide-react'
 import { PageTransition } from '@/components/PageTransition'
 import { CardGridSkeleton } from '@/components/skeletons'
@@ -43,6 +44,7 @@ export default function Materials() {
   const [students, setStudents] = useState<Student[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const [isEditAccessOpen, setIsEditAccessOpen] = useState(false)
   const [isViewOpen, setIsViewOpen] = useState(false)
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(
@@ -91,13 +93,14 @@ export default function Materials() {
       return
     }
 
+    setIsUploading(true)
     try {
-      // In a real app, we would upload selectedFile to Storage
+      const fileType = selectedFile.name.endsWith('.pdf') ? 'PDF' : 'Outro'
+
       await materialService.create({
         ...newMaterial,
-        fileUrl:
-          'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', // Mock URL for now as per instructions
-        fileType: 'PDF',
+        file: selectedFile,
+        fileType,
         studentIds:
           newMaterial.studentIds.length > 0
             ? newMaterial.studentIds
@@ -109,8 +112,15 @@ export default function Materials() {
       setNewMaterial({ title: '', description: '', studentIds: [] })
       setSelectedFile(null)
       loadData()
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar material' })
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao enviar material',
+        description:
+          error.message || 'Verifique sua conexão e tente novamente.',
+      })
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -247,7 +257,13 @@ export default function Materials() {
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleCreate}>Enviar</Button>
+                <Button onClick={handleCreate} disabled={isUploading}>
+                  {isUploading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    'Enviar'
+                  )}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -261,15 +277,27 @@ export default function Materials() {
             <DialogTitle>{selectedMaterial?.title}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 h-full bg-muted/20 rounded-md overflow-hidden">
-            {selectedMaterial?.fileType === 'PDF' ? (
+            {selectedMaterial?.fileType === 'PDF' &&
+            selectedMaterial.fileUrl ? (
               <iframe
                 src={selectedMaterial.fileUrl}
                 className="w-full h-full"
                 title="PDF Viewer"
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                Visualização não disponível para este formato.
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
+                <p>Visualização não disponível para este formato.</p>
+                {selectedMaterial?.fileUrl && (
+                  <Button asChild>
+                    <a
+                      href={selectedMaterial.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Download className="mr-2 h-4 w-4" /> Baixar Arquivo
+                    </a>
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -392,9 +420,16 @@ export default function Materials() {
                   size="icon"
                   title="Baixar"
                   className="hover:text-primary"
-                  onClick={() => window.open(material.fileUrl, '_blank')}
+                  asChild
                 >
-                  <Download className="h-4 w-4" />
+                  <a
+                    href={material.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    download
+                  >
+                    <Download className="h-4 w-4" />
+                  </a>
                 </Button>
               </CardFooter>
             </Card>

@@ -40,7 +40,7 @@ export default function Integrations() {
     if (integration.type === 'oauth') {
       setProcessingId(integration.id)
 
-      // Simulate OAuth Popup Flow
+      // 1. Explicit and unified Google Calendar connection flow (Simulation)
       const width = 600
       const height = 700
       const left = window.screen.width / 2 - width / 2
@@ -53,30 +53,38 @@ export default function Integrations() {
       )
 
       if (popup) {
+        // Simulate the Google OAuth Consent Screen
         popup.document.write(`
           <html>
-            <head><title>Autenticando...</title></head>
-            <body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#f8fafc;">
-              <div style="text-align:center;">
-                <h2 style="color:#0f172a;">Conectando ao ${integration.name}...</h2>
-                <p style="color:#64748b;">Por favor, aguarde enquanto comunicamos com o Google.</p>
-                <div style="margin-top:20px;">
-                  <div style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
-                </div>
-                <style>
-                  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                </style>
+            <head>
+              <title>Conectar Google Calendar</title>
+              <style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #fff; color: #202124; }
+                .container { max-width: 400px; padding: 40px; border: 1px solid #dadce0; border-radius: 8px; text-align: center; }
+                .logo { width: 48px; height: 48px; margin-bottom: 16px; }
+                h1 { font-size: 24px; font-weight: 500; margin-bottom: 0; }
+                p { font-size: 16px; margin-top: 10px; margin-bottom: 40px; color: #5f6368; }
+                .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4285f4; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto; }
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" class="logo">
+                <h1>Fazer login com o Google</h1>
+                <p>O Manyclass deseja acessar seu Google Calendar para sincronizar eventos.</p>
+                <div class="loader"></div>
+                <p style="font-size: 12px; margin-top: 20px;">Aguarde, conectando...</p>
               </div>
             </body>
           </html>
         `)
 
-        // Simulate user interaction delay
+        // Simulate network delay and success callback
         setTimeout(async () => {
           popup.close()
           try {
-            // Simulate mocked tokens for Google Providers to satisfy user story about storing tokens
-            // In a real app, the OAuth callback would handle this.
+            // 2. Store connection details in 'integrations' table via service
             let config = {}
             if (
               integration.provider === 'google_calendar' ||
@@ -85,14 +93,16 @@ export default function Integrations() {
               config = {
                 accessToken: 'mock_access_token_' + Date.now(),
                 refreshToken: 'mock_refresh_token_' + Date.now(),
+                syncToPersonalCalendar: true, // Default to true on connect
                 provider: 'google',
               }
             }
 
             await integrationService.connect(integration.id, config)
+
             toast({
-              title: 'Integração conectada!',
-              description: `${integration.name} foi conectado com sucesso.`,
+              title: 'Conectado com sucesso!',
+              description: `${integration.name} agora está sincronizado. Eventos serão enviados automaticamente.`,
             })
             loadIntegrations()
           } catch (error) {

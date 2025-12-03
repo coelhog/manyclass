@@ -8,14 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Check, MessageCircle, Loader2 } from 'lucide-react'
+import { Check, MessageCircle, Loader2, ExternalLink } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { PageTransition } from '@/components/PageTransition'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { subscriptionService, plans } from '@/services/subscriptionService'
-import { Plan, PlanType } from '@/types'
+import { Plan } from '@/types'
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 
 interface PlansProps {
@@ -40,54 +39,42 @@ export default function Plans({
   allowSkip,
   onSkip,
 }: PlansProps) {
-  const { user, updateUser } = useAuth()
+  const { user } = useAuth()
   const [isAnnual, setIsAnnual] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-
-  // Payment Form State
-  const [cardName, setCardName] = useState('')
-  const [cardNumber, setCardNumber] = useState('')
-  const [cardExpiry, setCardExpiry] = useState('')
-  const [cardCvv, setCardCvv] = useState('')
+  const [isPaymentConfirmOpen, setIsPaymentConfirmOpen] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   const handleSelectPlan = (plan: Plan) => {
     setSelectedPlan(plan)
-    setIsPaymentOpen(true)
+    setIsPaymentConfirmOpen(true)
   }
 
-  const handlePayment = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedPlan || !user) return
+  const handleProceedToPayment = async () => {
+    if (!selectedPlan) return
 
-    setIsProcessing(true)
+    setIsRedirecting(true)
     try {
-      await subscriptionService.processPayment(
-        {
-          number: cardNumber,
-          cvv: cardCvv,
-          expiry: cardExpiry,
-          name: cardName,
-        },
+      const paymentUrl = await subscriptionService.getPaymentUrl(
         selectedPlan.id,
         isAnnual ? 'yearly' : 'monthly',
       )
 
-      // Update User Subscription
-      await updateUser({
-        plan_id: selectedPlan.id,
-        subscriptionStatus: 'active',
-        trialEndsAt: undefined, // Clear trial if paid
-      })
+      // Redirect to Asaas
+      window.open(paymentUrl, '_blank')
 
-      toast.success('Pagamento realizado com sucesso! Plano ativado.')
-      setIsPaymentOpen(false)
+      toast.success(
+        'Redirecionando para o pagamento seguro. Complete a transação na nova aba.',
+      )
+      setIsPaymentConfirmOpen(false)
+
+      // Ideally, we would wait for webhook confirmation, but for this flow we assume callback
+      // or user manual "I paid" check. For now, triggering callback if provided
       if (onPlanSelected) onPlanSelected()
     } catch (error: any) {
-      toast.error(error.message || 'Erro ao processar pagamento')
+      toast.error('Erro ao gerar link de pagamento. Tente novamente.')
     } finally {
-      setIsProcessing(false)
+      setIsRedirecting(false)
     }
   }
 
@@ -204,78 +191,47 @@ export default function Plans({
         )}
       </div>
 
-      {/* Payment Modal */}
-      <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
+      {/* Redirect Confirmation Modal */}
+      <Dialog
+        open={isPaymentConfirmOpen}
+        onOpenChange={setIsPaymentConfirmOpen}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Assinar Plano {selectedPlan?.name}</DialogTitle>
+            <DialogTitle>Ir para Pagamento</DialogTitle>
             <DialogDescription>
-              Insira os dados do cartão de crédito para confirmar a assinatura.
+              Você será redirecionado para a plataforma segura do Asaas para
+              concluir a assinatura do plano{' '}
+              <strong>{selectedPlan?.name}</strong>
+              .
               <br />
-              <span className="font-bold text-primary">
-                Total: R${' '}
-                {(isAnnual
-                  ? selectedPlan?.priceAnnual
-                  : selectedPlan?.priceMonthly
-                )
-                  ?.toFixed(2)
-                  .replace('.', ',')}
-              </span>
+              <br />
+              Valor: R${' '}
+              {(isAnnual
+                ? selectedPlan?.priceAnnual
+                : selectedPlan?.priceMonthly
+              )
+                ?.toFixed(2)
+                .replace('.', ',')}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handlePayment} className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome no Cartão</Label>
-              <Input
-                id="name"
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value)}
-                placeholder="Como impresso no cartão"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="number">Número do Cartão</Label>
-              <Input
-                id="number"
-                value={cardNumber}
-                onChange={(e) => setCardNumber(e.target.value)}
-                placeholder="0000 0000 0000 0000"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="expiry">Validade</Label>
-                <Input
-                  id="expiry"
-                  value={cardExpiry}
-                  onChange={(e) => setCardExpiry(e.target.value)}
-                  placeholder="MM/AA"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cvv">CVV</Label>
-                <Input
-                  id="cvv"
-                  value={cardCvv}
-                  onChange={(e) => setCardCvv(e.target.value)}
-                  placeholder="123"
-                  required
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" className="w-full" disabled={isProcessing}>
-                {isProcessing ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  'Confirmar Pagamento'
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsPaymentConfirmOpen(false)}
+              disabled={isRedirecting}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleProceedToPayment} disabled={isRedirecting}>
+              {isRedirecting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ExternalLink className="mr-2 h-4 w-4" />
+              )}
+              Ir para Asaas
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </PageTransition>

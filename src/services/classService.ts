@@ -177,7 +177,7 @@ export const classService = {
       await supabase.from('class_students').insert(relations)
     }
 
-    // Sync with Google Calendar
+    // Automatic Sync with Google Calendar (New Feature)
     if (options?.syncGoogle) {
       try {
         await supabase.functions.invoke('google-calendar', {
@@ -228,14 +228,12 @@ export const classService = {
 
     // Sync students if provided
     if (data.studentIds) {
-      // Delete existing not in new list
       await supabase
         .from('class_students')
         .delete()
         .eq('class_id', id)
         .not('student_id', 'in', `(${data.studentIds.join(',')})`)
 
-      // Upsert
       const { data: existing } = await supabase
         .from('class_students')
         .select('student_id')
@@ -254,7 +252,7 @@ export const classService = {
       }
     }
 
-    // Sync Google Calendar if requested
+    // Automatic Sync with Google Calendar on Update
     if (options?.syncGoogle) {
       const { data: user } = await supabase.auth.getUser()
       if (user?.user) {
@@ -343,9 +341,13 @@ export const classService = {
   },
 
   createEvent: async (data: CreateEventDTO): Promise<CalendarEvent> => {
+    const { data: user } = await supabase.auth.getUser()
+    const teacherId = user?.user?.id
+
     const { data: event, error } = await supabase
       .from('events')
       .insert({
+        teacher_id: teacherId,
         title: data.title,
         description: data.description,
         start_time: data.start_time,
@@ -353,11 +355,27 @@ export const classService = {
         type: data.type,
         student_ids: data.student_ids,
         color: data.color,
+        is_synced: false, // Default false, sync triggers update
       })
       .select()
       .single()
 
     if (error) throw error
+
+    // Trigger Google Calendar Sync
+    if (teacherId) {
+      try {
+        supabase.functions.invoke('google-calendar', {
+          body: {
+            action: 'sync_event',
+            userId: teacherId,
+            eventDetails: { ...event, id: event.id },
+          },
+        })
+      } catch (err) {
+        console.error('Sync failed for event creation', err)
+      }
+    }
 
     return {
       id: event.id,
@@ -368,6 +386,7 @@ export const classService = {
       type: event.type as any,
       student_ids: event.student_ids,
       color: event.color,
+      isSynced: event.is_synced,
     }
   },
 
@@ -389,6 +408,22 @@ export const classService = {
 
     if (error) throw error
 
+    // Trigger Google Calendar Sync
+    const { data: user } = await supabase.auth.getUser()
+    if (user?.user) {
+      try {
+        supabase.functions.invoke('google-calendar', {
+          body: {
+            action: 'sync_event',
+            userId: user.user.id,
+            eventDetails: { ...event, id: event.id },
+          },
+        })
+      } catch (err) {
+        console.error('Sync failed for event update', err)
+      }
+    }
+
     return {
       id: event.id,
       title: event.title,
@@ -398,6 +433,7 @@ export const classService = {
       type: event.type as any,
       student_ids: event.student_ids,
       color: event.color,
+      isSynced: event.is_synced,
     }
   },
 

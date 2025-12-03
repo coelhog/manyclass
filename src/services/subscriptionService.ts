@@ -1,7 +1,7 @@
 import { Plan, PlanType } from '@/types'
 
-const ASAAS_SANDBOX_KEY =
-  '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmVjM2ZiYjMyLTBkMTEtNDFiZi1iMjhjLTg2NGFjODk0NjJkNTo6JGFhY2hfYTZjOGRiMmMtZjQzMC00NzQ2LTk2MDAtZTRiY2JlYmY5ZGU1'
+// In a real app, this would be fetched from backend or environment
+const ASAAS_PAYMENT_URL_BASE = 'https://sandbox.asaas.com/c/'
 
 export const plans: Plan[] = [
   {
@@ -51,27 +51,20 @@ export const plans: Plan[] = [
 export const subscriptionService = {
   getPlans: () => plans,
 
-  processPayment: async (
-    creditCard: any,
+  // Replaced credit card processing with redirect URL generation
+  getPaymentUrl: async (
     planId: PlanType,
     period: 'monthly' | 'yearly',
-  ): Promise<boolean> => {
-    // Mock Asaas Payment Processing
-    return new Promise((resolve, reject) => {
+  ): Promise<string> => {
+    // Mock Asaas Payment Link Generation
+    return new Promise((resolve) => {
       setTimeout(() => {
-        // In a real implementation, we would use the ASAAS_SANDBOX_KEY to authenticate request
-        // Here we just validate existence for the mock
-        if (!ASAAS_SANDBOX_KEY) {
-          reject(new Error('Configuração de pagamento inválida'))
-          return
-        }
-
-        if (creditCard.number && creditCard.cvv && creditCard.expiry) {
-          resolve(true)
-        } else {
-          reject(new Error('Dados do cartão inválidos'))
-        }
-      }, 2000)
+        // In production, this would call your backend to create a payment in Asaas
+        // and return the `invoiceUrl` or `paymentLink`.
+        // For the prototype, we generate a mock URL.
+        const mockPaymentId = Math.random().toString(36).substring(7)
+        resolve(`${ASAAS_PAYMENT_URL_BASE}${mockPaymentId}`)
+      }, 1000)
     })
   },
 }

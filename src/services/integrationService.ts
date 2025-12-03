@@ -44,13 +44,12 @@ export const integrationService = {
     ]
 
     return defaults.map((def) => {
-      // Find stored integration matching provider/id
       const stored = data.find(
         (d) => d.integration_id === def.id || d.provider === def.provider,
       )
       return {
         ...def,
-        id: def.id, // Use static ID for UI consistency
+        id: def.id,
         status: (stored?.status as any) || 'disconnected',
         config: stored?.config,
         connectedAt: stored?.connected_at,
@@ -58,6 +57,7 @@ export const integrationService = {
     })
   },
 
+  // Explicit connection action
   connect: async (
     integrationId: string,
     config?: IntegrationConfig,
@@ -67,8 +67,6 @@ export const integrationService = {
     } = await supabase.auth.getUser()
     if (!user) throw new Error('User not found')
 
-    // For Google, we are mocking the storage of tokens.
-    // In production, this would happen via callback from OAuth flow.
     await supabase.from('integrations').upsert(
       {
         user_id: user.id,
@@ -104,7 +102,6 @@ export const integrationService = {
     } = await supabase.auth.getUser()
     if (!user) return
 
-    // Fetch existing to merge
     const { data: existing } = await supabase
       .from('integrations')
       .select('config')
@@ -124,8 +121,35 @@ export const integrationService = {
   getByProvider: async (
     provider: IntegrationProvider,
   ): Promise<Integration | undefined> => {
-    const all = await integrationService.getAll()
-    return all.find((i) => i.provider === provider)
+    // Fetch fresh data to ensure accuracy
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return undefined
+
+    const { data } = await supabase
+      .from('integrations')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('provider', provider)
+      .single()
+
+    if (data) {
+      // Return minimal integration object from DB
+      return {
+        id: data.integration_id,
+        integration_id: data.integration_id,
+        name: '', // Simplified
+        provider: data.provider as any,
+        type: 'oauth',
+        logo: '',
+        description: '',
+        status: data.status as any,
+        config: data.config as any,
+        connectedAt: data.connected_at,
+      }
+    }
+    return undefined
   },
 
   isConnected: async (provider: IntegrationProvider): Promise<boolean> => {

@@ -32,8 +32,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { mockStudents } from '@/lib/mock-data'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { format } from 'date-fns'
-import { DateMaskInput } from '@/components/ui/date-mask-input'
+import { format, parse } from 'date-fns'
+import { DatePicker } from '@/components/ui/date-picker'
 
 const EVENT_COLORS = [
   { label: 'Azul', value: 'blue', class: 'bg-blue-500' },
@@ -48,7 +48,7 @@ const EVENT_COLORS = [
 const formSchema = z.object({
   title: z.string().min(2, 'Título deve ter pelo menos 2 caracteres'),
   type: z.enum(['class', 'task', 'test'] as [string, ...string[]]),
-  date: z.string(),
+  date: z.date(),
   startTime: z.string(),
   endTime: z.string(),
   description: z.string().optional(),
@@ -80,7 +80,7 @@ export function ClassModal({
     defaultValues: {
       title: '',
       type: 'class',
-      date: format(new Date(), 'yyyy-MM-dd'),
+      date: new Date(),
       startTime: '09:00',
       endTime: '10:00',
       description: '',
@@ -97,7 +97,7 @@ export function ClassModal({
         form.reset({
           title: event.title,
           type: event.type,
-          date: format(start, 'yyyy-MM-dd'),
+          date: start,
           startTime: format(start, 'HH:mm'),
           endTime: format(end, 'HH:mm'),
           description: event.description || '',
@@ -109,7 +109,7 @@ export function ClassModal({
         form.reset({
           title: '',
           type: 'class',
-          date: format(dateToUse, 'yyyy-MM-dd'),
+          date: dateToUse,
           startTime: '09:00',
           endTime: '10:00',
           description: '',
@@ -123,8 +123,9 @@ export function ClassModal({
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSaving(true)
     try {
-      const startDateTime = new Date(`${values.date}T${values.startTime}`)
-      const endDateTime = new Date(`${values.date}T${values.endTime}`)
+      const dateStr = format(values.date, 'yyyy-MM-dd')
+      const startDateTime = new Date(`${dateStr}T${values.startTime}`)
+      const endDateTime = new Date(`${dateStr}T${values.endTime}`)
 
       await onSave({
         title: values.title,
@@ -247,7 +248,7 @@ export function ClassModal({
                   <FormItem>
                     <FormLabel>Data</FormLabel>
                     <FormControl>
-                      <DateMaskInput {...field} />
+                      <DatePicker date={field.value} setDate={field.onChange} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -283,6 +284,7 @@ export function ClassModal({
               </div>
             </div>
 
+            {/* ... rest of the form */}
             <FormField
               control={form.control}
               name="student_ids"

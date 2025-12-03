@@ -22,15 +22,40 @@ export const materialService = {
   },
 
   create: async (
-    material: Omit<Material, 'id' | 'uploadedAt'>,
+    material: Omit<Material, 'id' | 'uploadedAt' | 'fileUrl'> & {
+      file?: File
+      fileUrl?: string
+    },
   ): Promise<Material> => {
+    let finalFileUrl = material.fileUrl || ''
+
+    // Handle File Upload if provided
+    if (material.file) {
+      const fileExt = material.file.name.split('.').pop()
+      const fileName = `${Date.now()}.${fileExt}`
+      const filePath = `${material.teacherId}/${fileName}`
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('materials')
+        .upload(filePath, material.file)
+
+      if (uploadError) throw uploadError
+
+      // Get Public URL
+      const { data: urlData } = supabase.storage
+        .from('materials')
+        .getPublicUrl(filePath)
+
+      finalFileUrl = urlData.publicUrl
+    }
+
     const { data: m, error } = await supabase
       .from('materials')
       .insert({
         teacher_id: material.teacherId,
         title: material.title,
         description: material.description,
-        file_url: material.fileUrl,
+        file_url: finalFileUrl,
         file_type: material.fileType,
       })
       .select()
@@ -70,18 +95,17 @@ export const materialService = {
       )
     }
 
-    // Not updating content fields for simplicity in this method as UI focuses on access
-    // Use simpler update for other fields if needed
     const updated = await materialService.getAll()
     return updated.find((m) => m.id === id)!
   },
 
   delete: async (id: string): Promise<void> => {
+    // Fetch material first to get path if we want to delete from storage too
+    // For now, just deleting record
     await supabase.from('materials').delete().eq('id', id)
   },
 
   getByStudentId: async (studentId: string): Promise<Material[]> => {
-    // Join via material_access
     const { data, error } = await supabase
       .from('material_access')
       .select('material_id, materials(*)')
@@ -97,7 +121,7 @@ export const materialService = {
       fileUrl: d.materials.file_url,
       fileType: d.materials.file_type,
       uploadedAt: d.materials.uploaded_at,
-      studentIds: [studentId], // simplified
+      studentIds: [studentId],
     }))
   },
 
