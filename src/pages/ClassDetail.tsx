@@ -6,7 +6,16 @@ import { ClassGroup, Student } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { ArrowLeft, Plus, Trash2, DollarSign, Edit } from 'lucide-react'
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  DollarSign,
+  Share2,
+  Copy,
+  Clock,
+  Link as LinkIcon,
+} from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -22,6 +31,14 @@ import { Label } from '@/components/ui/label'
 import { PageTransition } from '@/components/PageTransition'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export default function ClassDetail() {
   const { id } = useParams<{ id: string }>()
@@ -119,6 +136,31 @@ export default function ClassDetail() {
     }
   }
 
+  const copyToClipboard = (text: string, message: string) => {
+    navigator.clipboard.writeText(text)
+    toast({ title: 'Copiado!', description: message })
+  }
+
+  const handleShareLink = (days?: number) => {
+    if (!classGroup?.meetLink) {
+      toast({
+        variant: 'destructive',
+        title: 'Esta turma não possui link de reunião configurado.',
+      })
+      return
+    }
+
+    let textToCopy = `Link da aula: ${classGroup.meetLink}`
+    let message = 'Link copiado para a área de transferência.'
+
+    if (days) {
+      textToCopy += `\nEste link é válido por ${days} dias (sugestão).`
+      message = `Link com sugestão de ${days} dias copiado.`
+    }
+
+    copyToClipboard(textToCopy, message)
+  }
+
   if (isLoading) {
     return (
       <PageTransition className="space-y-8">
@@ -153,7 +195,7 @@ export default function ClassDetail() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">
             {classGroup.name}
           </h1>
@@ -162,6 +204,40 @@ export default function ClassDetail() {
             {classGroup.category === 'individual' ? 'Individual' : 'Grupo'}
           </p>
         </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <Share2 className="h-4 w-4" />
+              Compartilhar Link
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Opções de Compartilhamento</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => handleShareLink()}
+              className="cursor-pointer"
+            >
+              <LinkIcon className="mr-2 h-4 w-4" />
+              Copiar Link Direto
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleShareLink(7)}
+              className="cursor-pointer"
+            >
+              <Clock className="mr-2 h-4 w-4" />
+              Sugestão de 7 dias
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleShareLink(30)}
+              className="cursor-pointer"
+            >
+              <Clock className="mr-2 h-4 w-4" />
+              Sugestão de 30 dias
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Card>

@@ -230,3 +230,15 @@ export interface Integration {
   config?: IntegrationConfig
   connectedAt?: string
 }
+
+// Notes Types
+export interface ClassNote {
+  id: string
+  eventId: string // Link to the specific class occurrence ID
+  classId?: string // Link to the parent ClassGroup
+  studentId: string
+  teacherId: string
+  content: string // HTML content from rich text editor
+  createdAt: string
+  updatedAt: string
+}
