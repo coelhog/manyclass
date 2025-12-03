@@ -21,7 +21,8 @@ import { Button } from '@/components/ui/button'
 import { studentService } from '@/services/studentService'
 import { classService } from '@/services/classService'
 import { taskService } from '@/services/taskService'
-import { ClassGroup } from '@/types'
+import { courseService } from '@/services/courseService'
+import { ClassGroup, PlatformCourse } from '@/types'
 
 const chartConfig = {
   revenue: {
@@ -38,6 +39,7 @@ export default function Dashboard() {
   const [activeClasses, setActiveClasses] = useState<ClassGroup[]>([])
   const [monthlyRevenue, setMonthlyRevenue] = useState(0)
   const [pendingTasksCount, setPendingTasksCount] = useState(0)
+  const [platformCourses, setPlatformCourses] = useState<PlatformCourse[]>([])
 
   // Mock chart data for now, in a real scenario this would be calculated from historical payments/classes
   const chartData = [
@@ -55,15 +57,17 @@ export default function Dashboard() {
       setIsLoading(true)
       try {
         // Fetch data for logged-in teacher
-        const [students, classes, tasks] = await Promise.all([
+        const [students, classes, tasks, courses] = await Promise.all([
           studentService.getByTeacherId(user.id),
           classService.getByTeacherId(user.id),
-          taskService.getAllTasks(), // Filtering tasks would be better if taskService supported it
+          taskService.getAllTasks(),
+          courseService.getAll(),
         ])
 
         setTotalStudents(students.length)
         setTotalClasses(classes.length)
         setActiveClasses(classes.filter((c) => c.status === 'active'))
+        setPlatformCourses(courses.filter((c) => c.isActive))
 
         // Calculate Revenue (Monthly Projection)
         let revenue = 0
@@ -180,41 +184,51 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Admin Content Section */}
-      <Card className="bg-gradient-to-r from-primary/10 to-transparent border-primary/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Video className="h-5 w-5 text-primary" />
-            Conteúdos da Plataforma
-          </CardTitle>
-          <CardDescription>
-            Aulas e materiais disponibilizados pela administração.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="bg-background/80 p-4 rounded-lg border shadow-sm hover:shadow-md transition-all cursor-pointer"
-              >
-                <div className="aspect-video bg-muted rounded-md mb-3 flex items-center justify-center">
-                  <Video className="h-8 w-8 text-muted-foreground/50" />
+      {/* Admin Content Section - Visible only if there are active courses */}
+      {platformCourses.length > 0 && (
+        <Card className="bg-gradient-to-r from-primary/10 to-transparent border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Video className="h-5 w-5 text-primary" />
+              Conteúdos da Plataforma
+            </CardTitle>
+            <CardDescription>
+              Aulas e materiais disponibilizados pela administração.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              {platformCourses.map((course) => (
+                <div
+                  key={course.id}
+                  className="bg-background/80 p-4 rounded-lg border shadow-sm hover:shadow-md transition-all cursor-pointer"
+                >
+                  <div className="aspect-video bg-muted rounded-md mb-3 flex items-center justify-center overflow-hidden">
+                    <Video className="h-8 w-8 text-muted-foreground/50" />
+                  </div>
+                  <h3
+                    className="font-semibold text-sm line-clamp-1"
+                    title={course.title}
+                  >
+                    {course.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    {course.description}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="w-full mt-3"
+                    onClick={() => window.open(course.videoUrl, '_blank')}
+                  >
+                    Acessar
+                  </Button>
                 </div>
-                <h3 className="font-semibold text-sm">
-                  Metodologia de Ensino {i}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Atualizado há 2 dias
-                </p>
-                <Button size="sm" variant="secondary" className="w-full mt-3">
-                  Acessar
-                </Button>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4 hover:shadow-md transition-shadow duration-300">

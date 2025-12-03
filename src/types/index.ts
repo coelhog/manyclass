@@ -281,3 +281,13 @@ export interface Plan {
   features: string[]
   highlight?: boolean
 }
+
+export interface PlatformCourse {
+  id: string
+  title: string
+  description: string
+  videoUrl: string
+  thumbnail?: string
+  createdAt: string
+  isActive: boolean
+}

@@ -9,6 +9,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   loginAsStudent: () => Promise<void>
   loginAsAdmin: (email: string, password: string) => Promise<void>
+  loginWithGoogle: () => Promise<void>
   register: (
     name: string,
     email: string,
@@ -118,6 +119,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return login(email, password)
   }
 
+  const loginWithGoogle = async () => {
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        // Mock Google User
+        const googleEmail = 'teacher@gmail.com'
+        const users = db.get<User>(COLLECTION_USERS)
+        let userFound = users.find((u) => u.email === googleEmail)
+
+        if (!userFound) {
+          // Register if not found
+          const trialEndDate = new Date()
+          trialEndDate.setDate(trialEndDate.getDate() + 7)
+
+          userFound = {
+            id: Math.random().toString(36).substr(2, 9),
+            name: 'Professor Google',
+            email: googleEmail,
+            role: 'teacher',
+            avatar: `https://img.usecurling.com/i?q=google&color=multicolor&shape=fill`,
+            plan_id: 'basic',
+            trialEndsAt: trialEndDate.toISOString(),
+            subscriptionStatus: 'trial',
+            onboardingCompleted: false,
+          }
+          db.insert(COLLECTION_USERS, userFound)
+        }
+
+        setUser(userFound)
+        localStorage.setItem(
+          'manyclass_current_user',
+          JSON.stringify(userFound),
+        )
+        resolve()
+      }, 1500)
+    })
+  }
+
   const register = async (
     name: string,
     email: string,
@@ -192,6 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         loginAsStudent,
         loginAsAdmin,
+        loginWithGoogle,
         register,
         logout,
         updateUser,

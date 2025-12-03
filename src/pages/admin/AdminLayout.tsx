@@ -10,6 +10,7 @@ import {
   FileText,
   List,
   GraduationCap,
+  Video,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -25,6 +26,7 @@ export default function AdminLayout() {
   const navItems = [
     { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
     { title: 'Professores', url: '/admin/teachers', icon: Users },
+    { title: 'Cursos da Plataforma', url: '/admin/courses', icon: Video },
     {
       title: 'Gerenciamento de Aulas',
       url: '/admin/classes',
@@ -44,14 +46,15 @@ export default function AdminLayout() {
           <Shield className="w-6 h-6 text-blue-500" />
           <span>Admin Panel</span>
         </div>
-        <nav className="flex-1 px-4 space-y-2 mt-4">
+        <nav className="flex-1 px-4 space-y-2 mt-4 overflow-y-auto">
           {navItems.map((item) => (
             <Link
               key={item.url}
               to={item.url}
               className={cn(
                 'flex items-center gap-3 px-4 py-3 rounded-md transition-colors',
-                pathname === item.url || pathname.startsWith(item.url + '/')
+                pathname === item.url ||
+                  (pathname.startsWith(item.url + '/') && item.url !== '/admin')
                   ? 'bg-blue-600 text-white'
                   : 'text-slate-400 hover:bg-slate-800 hover:text-white',
               )}

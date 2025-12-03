@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Mail } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export default function TeacherEdit() {
@@ -64,6 +64,14 @@ export default function TeacherEdit() {
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const handleSendResetPassword = () => {
+    // Mock sending email
+    toast({
+      title: 'Email enviado',
+      description: `Um link de redefinição de senha foi enviado para ${teacher?.email}`,
+    })
   }
 
   if (isLoading) {
@@ -147,12 +155,12 @@ export default function TeacherEdit() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Plano e Acesso</CardTitle>
+            <CardTitle>Acesso e Segurança</CardTitle>
             <CardDescription>
-              Defina o nível de acesso à plataforma.
+              Gerencie o plano e as credenciais.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label>Plano Atual</Label>
               <Select
@@ -172,6 +180,22 @@ export default function TeacherEdit() {
               </Select>
               <p className="text-xs text-muted-foreground">
                 O plano define os limites de alunos e recursos disponíveis.
+              </p>
+            </div>
+
+            <div className="pt-4 border-t">
+              <Label className="mb-2 block">Redefinição de Senha</Label>
+              <Button
+                variant="outline"
+                onClick={handleSendResetPassword}
+                className="w-full"
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Enviar Link de Redefinição
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                Por segurança, não é possível alterar a senha diretamente. Um
+                link será enviado ao email do professor.
               </p>
             </div>
           </CardContent>
