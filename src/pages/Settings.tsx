@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/switch'
 import { PageTransition } from '@/components/PageTransition'
 import { Link } from 'react-router-dom'
 import { Blocks, ExternalLink } from 'lucide-react'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 export default function Settings() {
   const { user } = useAuth()
@@ -69,7 +70,7 @@ export default function Settings() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefone</Label>
-                  <Input id="phone" placeholder="(00) 00000-0000" />
+                  <PhoneInput id="phone" value={user?.phone || ''} />
                 </div>
               </div>
             </CardContent>

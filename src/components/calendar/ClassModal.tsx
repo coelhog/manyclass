@@ -33,6 +33,7 @@ import { mockStudents } from '@/lib/mock-data'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { format } from 'date-fns'
+import { DateMaskInput } from '@/components/ui/date-mask-input'
 
 const EVENT_COLORS = [
   { label: 'Azul', value: 'blue', class: 'bg-blue-500' },
@@ -246,7 +247,7 @@ export function ClassModal({
                   <FormItem>
                     <FormLabel>Data</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <DateMaskInput {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

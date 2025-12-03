@@ -28,6 +28,8 @@ import {
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { MultiSelect } from '@/components/ui/multi-select'
+import { CurrencyInput } from '@/components/ui/currency-input'
+import { DateMaskInput } from '@/components/ui/date-mask-input'
 
 export default function Payments() {
   const [payments, setPayments] = useState<Payment[]>([])
@@ -155,32 +157,32 @@ export default function Payments() {
                 <Label htmlFor="amount" className="text-right">
                   Valor (R$)
                 </Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  className="col-span-3"
-                  value={newPayment.amount}
-                  onChange={(e) =>
-                    setNewPayment({
-                      ...newPayment,
-                      amount: Number(e.target.value),
-                    })
-                  }
-                />
+                <div className="col-span-3">
+                  <CurrencyInput
+                    id="amount"
+                    value={newPayment.amount}
+                    onChange={(val) =>
+                      setNewPayment({
+                        ...newPayment,
+                        amount: val,
+                      })
+                    }
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="dueDate" className="text-right">
                   Vencimento
                 </Label>
-                <Input
-                  id="dueDate"
-                  type="date"
-                  className="col-span-3"
-                  value={newPayment.dueDate}
-                  onChange={(e) =>
-                    setNewPayment({ ...newPayment, dueDate: e.target.value })
-                  }
-                />
+                <div className="col-span-3">
+                  <DateMaskInput
+                    id="dueDate"
+                    value={newPayment.dueDate}
+                    onChange={(val) =>
+                      setNewPayment({ ...newPayment, dueDate: val })
+                    }
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter>

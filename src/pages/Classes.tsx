@@ -36,6 +36,7 @@ import { CardGridSkeleton } from '@/components/skeletons'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAuth } from '@/contexts/AuthContext'
+import { CurrencyInput } from '@/components/ui/currency-input'
 
 const DAYS = [
   { label: 'Dom', value: 0 },
@@ -322,15 +323,13 @@ export default function Classes() {
                 <Label htmlFor="price" className="text-right">
                   Preço (R$)
                 </Label>
-                <Input
-                  id="price"
-                  type="number"
-                  className="col-span-3"
-                  value={newClass.price}
-                  onChange={(e) =>
-                    setNewClass({ ...newClass, price: Number(e.target.value) })
-                  }
-                />
+                <div className="col-span-3">
+                  <CurrencyInput
+                    id="price"
+                    value={newClass.price}
+                    onChange={(val) => setNewClass({ ...newClass, price: val })}
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-4 items-center gap-4">

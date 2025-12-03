@@ -50,6 +50,7 @@ import { PageTransition } from '@/components/PageTransition'
 import { TableSkeleton } from '@/components/skeletons'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useAuth } from '@/contexts/AuthContext'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 export default function Students() {
   const { user } = useAuth()
@@ -457,14 +458,15 @@ export default function Students() {
                   <Label htmlFor="phone" className="text-right">
                     Telefone
                   </Label>
-                  <Input
-                    id="phone"
-                    className="col-span-3"
-                    value={newStudent.phone}
-                    onChange={(e) =>
-                      setNewStudent({ ...newStudent, phone: e.target.value })
-                    }
-                  />
+                  <div className="col-span-3">
+                    <PhoneInput
+                      id="phone"
+                      value={newStudent.phone}
+                      onChange={(val) =>
+                        setNewStudent({ ...newStudent, phone: val })
+                      }
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="level" className="text-right">

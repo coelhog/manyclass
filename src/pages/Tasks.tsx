@@ -31,6 +31,7 @@ import { Plus, Loader2, LayoutGrid, List } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { DateMaskInput } from '@/components/ui/date-mask-input'
 
 const TAG_COLORS = [
   { label: 'Vermelho', value: 'red', class: 'bg-red-500' },
@@ -75,6 +76,11 @@ export default function Tasks() {
     color: 'blue',
   })
   const [newTag, setNewTag] = useState({ label: '', color: 'gray' })
+
+  // Separate date and time for better masking control
+  const [taskDate, setTaskDate] = useState('')
+  const [taskTime, setTaskTime] = useState('')
+
   const { toast } = useToast()
 
   useEffect(() => {
@@ -107,6 +113,17 @@ export default function Tasks() {
       })
       return
     }
+
+    let dueDateIso: string | undefined = undefined
+    if (taskDate) {
+      const time = taskTime || '00:00'
+      try {
+        dueDateIso = new Date(`${taskDate}T${time}`).toISOString()
+      } catch (e) {
+        console.error('Invalid date', e)
+      }
+    }
+
     try {
       await taskService.createTask({
         title: newTask.title,
@@ -114,7 +131,7 @@ export default function Tasks() {
         type: newTask.type as any,
         classId: newTask.classId,
         studentId: newTask.studentId,
-        dueDate: newTask.dueDate,
+        dueDate: dueDateIso,
         status: columns[0]?.id || 'open', // Default to first column
         options: newTask.options,
         tags: newTask.tags,
@@ -124,6 +141,8 @@ export default function Tasks() {
       setIsDialogOpen(false)
       loadData()
       setNewTask({ type: 'text', tags: [], color: 'blue' })
+      setTaskDate('')
+      setTaskTime('')
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao criar tarefa' })
     }
@@ -324,17 +343,20 @@ export default function Tasks() {
                   </div>
                   <div className="grid gap-2">
                     <Label>Data de Entrega (Opcional)</Label>
-                    <Input
-                      type="datetime-local"
-                      onChange={(e) =>
-                        setNewTask({
-                          ...newTask,
-                          dueDate: e.target.value
-                            ? new Date(e.target.value).toISOString()
-                            : undefined,
-                        })
-                      }
-                    />
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <DateMaskInput
+                          value={taskDate}
+                          onChange={setTaskDate}
+                        />
+                      </div>
+                      <Input
+                        type="time"
+                        className="w-32"
+                        value={taskTime}
+                        onChange={(e) => setTaskTime(e.target.value)}
+                      />
+                    </div>
                     <p className="text-[10px] text-muted-foreground">
                       Se definida, aparecerá no calendário.
                     </p>

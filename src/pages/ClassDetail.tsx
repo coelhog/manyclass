@@ -30,7 +30,6 @@ import { useToast } from '@/hooks/use-toast'
 import { Label } from '@/components/ui/label'
 import { PageTransition } from '@/components/PageTransition'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +38,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { CurrencyInput } from '@/components/ui/currency-input'
 
 export default function ClassDetail() {
   const { id } = useParams<{ id: string }>()
@@ -370,15 +370,14 @@ export default function ClassDetail() {
                             </DialogHeader>
                             <div className="py-4">
                               <Label>Novo Valor Mensal</Label>
-                              <Input
-                                type="number"
+                              <CurrencyInput
                                 value={editingPrice?.price || 0}
-                                onChange={(e) =>
+                                onChange={(val) =>
                                   setEditingPrice((prev) =>
                                     prev
                                       ? {
                                           ...prev,
-                                          price: Number(e.target.value),
+                                          price: val,
                                         }
                                       : null,
                                   )

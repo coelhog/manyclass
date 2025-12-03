@@ -24,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { ArrowLeft, Loader2, Mail } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 export default function TeacherEdit() {
   const { id } = useParams<{ id: string }>()
@@ -132,12 +133,9 @@ export default function TeacherEdit() {
             </div>
             <div className="space-y-2">
               <Label>Telefone</Label>
-              <Input
+              <PhoneInput
                 value={teacher.phone || ''}
-                onChange={(e) =>
-                  setTeacher({ ...teacher, phone: e.target.value })
-                }
-                placeholder="(00) 00000-0000"
+                onChange={(val) => setTeacher({ ...teacher, phone: val })}
               />
             </div>
             <div className="space-y-2">
