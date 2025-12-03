@@ -37,6 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAuth } from '@/contexts/AuthContext'
 import { CurrencyInput } from '@/components/ui/currency-input'
+import { Switch } from '@/components/ui/switch'
 
 const DAYS = [
   { label: 'Dom', value: 0 },
@@ -73,6 +74,8 @@ export default function Classes() {
     category: ClassCategory
     studentLimit?: number
     color: string
+    syncGoogle: boolean
+    generateMeet: boolean
   }>({
     name: '',
     days: [],
@@ -83,7 +86,10 @@ export default function Classes() {
     category: 'individual',
     studentLimit: 1,
     color: 'blue',
+    syncGoogle: false,
+    generateMeet: false,
   })
+  const [isCreating, setIsCreating] = useState(false)
   const { toast } = useToast()
 
   const loadClasses = useCallback(async () => {
@@ -122,6 +128,7 @@ export default function Classes() {
     }
     if (!user) return
 
+    setIsCreating(true)
     const daysStr = newClass.days
       .sort()
       .map((d) => DAYS.find((day) => day.value === d)?.label)
@@ -129,13 +136,27 @@ export default function Classes() {
     const scheduleStr = `${daysStr} ${newClass.startTime}`
 
     try {
-      await classService.createClass({
-        ...newClass,
-        teacherId: user.id,
-        schedule: scheduleStr,
-        status: 'active',
-        studentIds: [],
-      })
+      await classService.createClass(
+        {
+          name: newClass.name,
+          days: newClass.days,
+          startTime: newClass.startTime,
+          duration: newClass.duration,
+          billingModel: newClass.billingModel,
+          price: newClass.price,
+          category: newClass.category,
+          studentLimit: newClass.studentLimit,
+          color: newClass.color,
+          teacherId: user.id,
+          schedule: scheduleStr,
+          status: 'active',
+          studentIds: [],
+        },
+        {
+          syncGoogle: newClass.syncGoogle,
+          generateMeet: newClass.generateMeet,
+        },
+      )
       toast({ title: 'Turma criada com sucesso!' })
       setIsDialogOpen(false)
       loadClasses()
@@ -149,9 +170,14 @@ export default function Classes() {
         category: 'individual',
         studentLimit: 1,
         color: 'blue',
+        syncGoogle: false,
+        generateMeet: false,
       })
     } catch (error) {
+      console.error(error)
       toast({ variant: 'destructive', title: 'Erro ao criar turma' })
+    } finally {
+      setIsCreating(false)
     }
   }
 
@@ -167,7 +193,7 @@ export default function Classes() {
               <Plus className="mr-2 h-4 w-4" /> Criar Turma
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Nova Turma</DialogTitle>
               <DialogDescription>
@@ -247,7 +273,7 @@ export default function Classes() {
                         days: val.map(Number),
                       })
                     }
-                    className="justify-start"
+                    className="justify-start flex-wrap"
                   >
                     {DAYS.map((day) => (
                       <ToggleGroupItem
@@ -355,9 +381,41 @@ export default function Classes() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="grid grid-cols-4 items-center gap-4 border-t pt-4">
+                <Label className="text-right">Google Meet</Label>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Switch
+                    checked={newClass.generateMeet}
+                    onCheckedChange={(checked) =>
+                      setNewClass({ ...newClass, generateMeet: checked })
+                    }
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Gerar link automaticamente
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Google Calendar</Label>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Switch
+                    checked={newClass.syncGoogle}
+                    onCheckedChange={(checked) =>
+                      setNewClass({ ...newClass, syncGoogle: checked })
+                    }
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Sincronizar agenda
+                  </span>
+                </div>
+              </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleCreate}>Criar</Button>
+              <Button onClick={handleCreate} disabled={isCreating}>
+                {isCreating ? 'Criando...' : 'Criar'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

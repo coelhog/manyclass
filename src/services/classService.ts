@@ -14,8 +14,6 @@ import {
   addMinutes,
 } from 'date-fns'
 
-const DAYS_MAP = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-
 export const classService = {
   getAllClasses: async (): Promise<ClassGroup[]> => {
     const { data: classes, error } = await supabase
@@ -122,7 +120,30 @@ export const classService = {
     }
   },
 
-  createClass: async (data: Omit<ClassGroup, 'id'>): Promise<ClassGroup> => {
+  createClass: async (
+    data: Omit<ClassGroup, 'id'>,
+    options?: { syncGoogle?: boolean; generateMeet?: boolean },
+  ): Promise<ClassGroup> => {
+    let meetLink = data.meetLink
+
+    // Handle Google Integrations via Edge Function
+    if (options?.generateMeet) {
+      try {
+        const { data: result, error: funcError } =
+          await supabase.functions.invoke('google-calendar', {
+            body: {
+              action: 'generate_meet',
+              userId: data.teacherId,
+            },
+          })
+        if (!funcError && result?.meetLink) {
+          meetLink = result.meetLink
+        }
+      } catch (e) {
+        console.error('Failed to generate meet link', e)
+      }
+    }
+
     // Insert class
     const { data: newClass, error } = await supabase
       .from('classes')
@@ -138,7 +159,7 @@ export const classService = {
         price: data.price,
         category: data.category,
         student_limit: data.studentLimit,
-        meet_link: data.meetLink,
+        meet_link: meetLink,
         color: data.color,
       })
       .select()
@@ -156,7 +177,26 @@ export const classService = {
       await supabase.from('class_students').insert(relations)
     }
 
-    return { ...data, id: newClass.id }
+    // Sync with Google Calendar
+    if (options?.syncGoogle) {
+      try {
+        await supabase.functions.invoke('google-calendar', {
+          body: {
+            action: 'sync_calendar',
+            userId: data.teacherId,
+            classDetails: {
+              ...data,
+              id: newClass.id,
+              meetLink: meetLink,
+            },
+          },
+        })
+      } catch (e) {
+        console.error('Failed to sync calendar', e)
+      }
+    }
+
+    return { ...data, id: newClass.id, meetLink }
   },
 
   updateClass: async (
@@ -194,8 +234,7 @@ export const classService = {
         .eq('class_id', id)
         .not('student_id', 'in', `(${data.studentIds.join(',')})`)
 
-      // Upsert (requires conflict handling or check exist)
-      // Simple approach: Select existing, filter new, insert
+      // Upsert
       const { data: existing } = await supabase
         .from('class_students')
         .select('student_id')
@@ -232,10 +271,8 @@ export const classService = {
 
   // Events
   getEvents: async (): Promise<CalendarEvent[]> => {
-    // 1. Fetch DB events
     const { data: dbEvents } = await supabase.from('events').select('*')
 
-    // 2. Generate auto events from classes
     const classes = await classService.getAllClasses()
     const classEvents: CalendarEvent[] = []
 

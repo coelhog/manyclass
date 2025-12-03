@@ -32,6 +32,23 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    // Check if user already exists to prevent non-2xx error from bubbling up blindly
+    const { data: existingUser } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .single()
+
+    if (existingUser) {
+      return new Response(
+        JSON.stringify({ error: 'User with this email already exists' }),
+        {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      )
+    }
+
     const { data: user, error: createError } =
       await supabase.auth.admin.createUser({
         email,
@@ -46,24 +63,30 @@ Deno.serve(async (req: Request) => {
       })
 
     if (createError) {
-      throw createError
+      console.error('Auth create error:', createError)
+      return new Response(JSON.stringify({ error: createError.message }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
-    // Handle profile creation if trigger doesn't cover it completely or if we need specific fields immediately
-    // The existing trigger `on_auth_user_created` handles profile creation based on user_metadata
-    // However, if phone is passed, we might want to ensure it's in the profile
     if (user.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          name: name,
-          role: role || 'student',
-          phone: phone,
-        })
-        .eq('id', user.user.id)
+      // Ensure profile is updated/created correctly
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: user.user.id,
+        email: email,
+        name: name,
+        role: role || 'student',
+        phone: phone,
+        avatar: user_metadata?.avatar_url || '',
+        plan_id: role === 'teacher' ? 'basic' : null,
+        onboarding_completed: false,
+      })
 
       if (profileError) {
-        console.error('Error updating profile:', profileError)
+        console.error('Profile update error:', profileError)
+        // We don't return error here to avoid rolling back auth user creation if not strictly necessary,
+        // but ideally we should transaction or cleanup. For now, logging is sufficient.
       }
     }
 
@@ -72,9 +95,10 @@ Deno.serve(async (req: Request) => {
       status: 200,
     })
   } catch (error: any) {
+    console.error('Unexpected error:', error)
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 500,
     })
   }
 })

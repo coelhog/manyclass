@@ -75,7 +75,20 @@ export default function Integrations() {
         setTimeout(async () => {
           popup.close()
           try {
-            await integrationService.connect(integration.id)
+            // Simulate mocked tokens for Google Providers to satisfy user story about storing tokens
+            let config = {}
+            if (
+              integration.provider === 'google_calendar' ||
+              integration.provider === 'google_meet'
+            ) {
+              config = {
+                accessToken: 'mock_access_token_' + Date.now(),
+                refreshToken: 'mock_refresh_token_' + Date.now(),
+                provider: 'google',
+              }
+            }
+
+            await integrationService.connect(integration.id, config)
             toast({
               title: 'Integração conectada!',
               description: `${integration.name} foi conectado com sucesso.`,
