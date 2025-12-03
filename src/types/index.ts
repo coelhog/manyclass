@@ -61,6 +61,7 @@ export interface ClassGroup {
   studentLimit?: number
   customStudentPrices?: Record<string, number> // studentId -> price
   color?: string
+  meetLink?: string // Google Meet Link
 }
 
 export type TaskType = 'text' | 'multiple-choice' | 'file-upload'
@@ -119,6 +120,7 @@ export interface CalendarEvent {
   color?: string
   classId?: string
   link?: string
+  isSynced?: boolean // If synced with Google Calendar
 }
 
 export interface CreateEventDTO {
@@ -212,6 +214,11 @@ export type IntegrationProvider =
   | 'microsoft_teams'
   | 'asaas'
 
+export interface IntegrationConfig {
+  syncToPersonalCalendar?: boolean
+  [key: string]: any
+}
+
 export interface Integration {
   id: string
   name: string
@@ -220,6 +227,6 @@ export interface Integration {
   status: 'connected' | 'disconnected'
   logo: string
   description: string
-  config?: Record<string, any>
+  config?: IntegrationConfig
   connectedAt?: string
 }

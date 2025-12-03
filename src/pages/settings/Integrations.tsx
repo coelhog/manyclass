@@ -6,7 +6,7 @@ import { IntegrationCard } from '@/components/integrations/IntegrationCard'
 import { AsaasConfigModal } from '@/components/integrations/AsaasConfigModal'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -58,7 +58,13 @@ export default function Integrations() {
             <body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#f8fafc;">
               <div style="text-align:center;">
                 <h2 style="color:#0f172a;">Conectando ao ${integration.name}...</h2>
-                <p style="color:#64748b;">Por favor, aguarde.</p>
+                <p style="color:#64748b;">Por favor, aguarde enquanto comunicamos com o Google.</p>
+                <div style="margin-top:20px;">
+                  <div style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                </div>
+                <style>
+                  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                </style>
               </div>
             </body>
           </html>
@@ -83,7 +89,7 @@ export default function Integrations() {
           } finally {
             setProcessingId(null)
           }
-        }, 2000)
+        }, 2500)
       } else {
         setProcessingId(null)
         toast({
@@ -134,6 +140,22 @@ export default function Integrations() {
     }
   }
 
+  const handleUpdateConfig = async (integration: Integration, config: any) => {
+    try {
+      await integrationService.updateConfig(integration.id, config)
+      toast({
+        title: 'Configurações atualizadas',
+        description: `As configurações de ${integration.name} foram salvas.`,
+      })
+      loadIntegrations()
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao atualizar',
+      })
+    }
+  }
+
   return (
     <PageTransition className="space-y-8">
       <div className="flex items-center gap-4">
@@ -169,6 +191,7 @@ export default function Integrations() {
               integration={integration}
               onConnect={handleConnect}
               onDisconnect={handleDisconnect}
+              onUpdateConfig={handleUpdateConfig}
               isLoading={processingId === integration.id}
             />
           ))}

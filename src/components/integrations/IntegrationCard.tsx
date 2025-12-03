@@ -9,13 +9,23 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, ExternalLink, Power, Settings2 } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import {
+  CheckCircle2,
+  ExternalLink,
+  Power,
+  Settings2,
+  Loader2,
+} from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useState } from 'react'
 
 interface IntegrationCardProps {
   integration: Integration
   onConnect: (integration: Integration) => void
   onDisconnect: (integration: Integration) => void
+  onUpdateConfig?: (integration: Integration, config: any) => void
   isLoading?: boolean
 }
 
@@ -23,9 +33,21 @@ export function IntegrationCard({
   integration,
   onConnect,
   onDisconnect,
+  onUpdateConfig,
   isLoading,
 }: IntegrationCardProps) {
   const isConnected = integration.status === 'connected'
+  const [isUpdating, setIsUpdating] = useState(false)
+
+  const handleToggleSync = async (checked: boolean) => {
+    if (!onUpdateConfig) return
+    setIsUpdating(true)
+    try {
+      await onUpdateConfig(integration, { syncToPersonalCalendar: checked })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
 
   return (
     <Card className="flex flex-col h-full transition-all hover:shadow-md">
@@ -58,12 +80,31 @@ export function IntegrationCard({
           </CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="flex-1">
+      <CardContent className="flex-1 space-y-4">
         {isConnected && integration.connectedAt && (
           <p className="text-xs text-muted-foreground">
             Conectado em{' '}
             {new Date(integration.connectedAt).toLocaleDateString()}
           </p>
+        )}
+
+        {/* Specific Config UI for Google Calendar */}
+        {isConnected && integration.provider === 'google_calendar' && (
+          <div className="flex items-center justify-between space-x-2 border-t pt-4">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">
+                Sincronizar com Agenda Pessoal
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Criar eventos na sua conta Google
+              </p>
+            </div>
+            <Switch
+              checked={integration.config?.syncToPersonalCalendar}
+              onCheckedChange={handleToggleSync}
+              disabled={isUpdating || isLoading}
+            />
+          </div>
         )}
       </CardContent>
       <CardFooter className="flex justify-end gap-2 border-t pt-4">
