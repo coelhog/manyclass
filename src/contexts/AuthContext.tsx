@@ -1,15 +1,21 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { User, PlanType } from '@/types'
+import { User } from '@/types'
 import { db } from '@/lib/db'
-import { differenceInDays, isPast, parseISO } from 'date-fns'
+import { isPast, parseISO } from 'date-fns'
 import { onboardingService } from '@/services/onboardingService'
+
+interface GoogleAuthData {
+  email: string
+  name: string
+  avatar?: string
+}
 
 interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<void>
   loginAsStudent: () => Promise<void>
   loginAsAdmin: (email: string, password: string) => Promise<void>
-  loginWithGoogle: () => Promise<void>
+  loginWithGoogle: (data?: GoogleAuthData) => Promise<void>
   register: (
     name: string,
     email: string,
@@ -60,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkSubscriptionAccess = () => {
     if (!user) return { allowed: false, reason: 'Not logged in' }
     if (user.role === 'admin') return { allowed: true }
-    if (user.role === 'student') return { allowed: true } // Students don't pay platform fee
+    if (user.role === 'student') return { allowed: true }
 
     // Teachers logic
     const isTrialActive =
@@ -86,7 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (userFound) {
           const cred = credentials.find((c: any) => c.userId === userFound.id)
           if (cred && cred.password === password) {
-            // Update local user state
             setUser(userFound)
             localStorage.setItem(
               'manyclass_current_user',
@@ -119,25 +124,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return login(email, password)
   }
 
-  const loginWithGoogle = async () => {
-    return new Promise<void>((resolve) => {
+  const loginWithGoogle = async (data?: GoogleAuthData) => {
+    return new Promise<void>((resolve, reject) => {
       setTimeout(() => {
-        // Mock Google User
-        const googleEmail = 'teacher@gmail.com'
-        const users = db.get<User>(COLLECTION_USERS)
-        let userFound = users.find((u) => u.email === googleEmail)
+        if (!data) {
+          reject(new Error('Dados do Google não fornecidos'))
+          return
+        }
 
-        if (!userFound) {
-          // Register if not found
+        const users = db.get<User>(COLLECTION_USERS)
+        let userFound = users.find((u) => u.email === data.email)
+
+        if (userFound) {
+          // User exists, assume updating profile with latest Google info
+          const updatedUser = {
+            ...userFound,
+            name: data.name,
+            avatar:
+              data.avatar ||
+              userFound.avatar ||
+              `https://img.usecurling.com/ppl/medium?gender=male&seed=${data.email}`,
+          }
+          db.update(COLLECTION_USERS, userFound.id, {
+            name: updatedUser.name,
+            avatar: updatedUser.avatar,
+          })
+          userFound = updatedUser
+        } else {
+          // Register new user from Google
           const trialEndDate = new Date()
           trialEndDate.setDate(trialEndDate.getDate() + 7)
 
           userFound = {
             id: Math.random().toString(36).substr(2, 9),
-            name: 'Professor Google',
-            email: googleEmail,
-            role: 'teacher',
-            avatar: `https://img.usecurling.com/i?q=google&color=multicolor&shape=fill`,
+            name: data.name,
+            email: data.email,
+            role: 'teacher', // Default role for Google Login
+            avatar:
+              data.avatar ||
+              `https://img.usecurling.com/ppl/medium?gender=male&seed=${data.email}`,
             plan_id: 'basic',
             trialEndsAt: trialEndDate.toISOString(),
             subscriptionStatus: 'trial',
