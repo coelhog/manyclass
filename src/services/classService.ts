@@ -3,8 +3,9 @@ import {
   CalendarEvent,
   CreateEventDTO,
   UpdateEventDTO,
+  Subscription,
 } from '@/types'
-import { mockClasses } from '@/lib/mock-data'
+import { mockClasses, mockSubscriptions } from '@/lib/mock-data'
 import { studentService } from './studentService'
 import { taskService } from './taskService'
 import { integrationService } from './integrationService'
@@ -207,7 +208,7 @@ export const classService = {
       const interval = eachDayOfInterval({ start, end })
 
       // Get all subscriptions to check payment periods
-      const allSubscriptions = await getAllSubscriptions() // Helper function below
+      const allSubscriptions = await getAllSubscriptions()
 
       classes.forEach((cls) => {
         if (cls.status !== 'active') return
@@ -221,19 +222,17 @@ export const classService = {
 
             // Filter students based on their subscription period (Payment-Based Scheduling)
             const activeStudentIds = cls.studentIds.filter((studentId) => {
-              if (cls.billingModel !== 'per_student') return true // Per class is always active for enrolled students? Or check per-class payments? Assuming always active for simplicity or group payments.
+              if (cls.billingModel !== 'per_student') return true
 
               const sub = allSubscriptions.find(
                 (s) => s.studentId === studentId,
               )
-              if (!sub) return false // No subscription = no class access (unless free trial logic)
+              if (!sub) return false
 
               // Check if date is within subscription period
               const subStart = parseISO(sub.startDate)
               const subEnd = parseISO(sub.nextBillingDate)
 
-              // For recurring, we assume active if date > start and status is active/pending
-              // If status is expired, only show until nextBillingDate
               if (sub.status === 'expired' || sub.status === 'past_due') {
                 return isWithinInterval(startTime, {
                   start: subStart,
@@ -241,14 +240,6 @@ export const classService = {
                 })
               }
 
-              // If active, show indefinitely (auto-extension logic implied by infinite generation)
-              // But strictly speaking: "schedule for specific duration corresponding to payment"
-              // So we should technically limit it to nextBillingDate even if active, assuming it renews.
-              // However, standard calendar UI usually shows future recurring events.
-              // Let's strictly follow user story: "automatically schedule ... for specific duration".
-              // This implies we check up to nextBillingDate.
-              // But since we mock "Automatic extension", let's assume if status is active, the billing date will move forward.
-              // For this display logic, if active, we show it.
               return sub.status === 'active' || sub.status === 'pending'
             })
 
@@ -272,9 +263,6 @@ export const classService = {
       })
 
       const allEvents = [...events, ...taskEvents, ...classEvents]
-
-      // Simulate "Automatic release of calendar slots for group students with overdue payments"
-      // This was partially handled by the filtering above based on subscription status.
 
       return allEvents
     } catch (e) {
@@ -329,23 +317,13 @@ export const classService = {
   },
 }
 
-// Helper to access subscriptions without circular dependency issues if possible,
-// or just duplicating the fetch logic since studentService depends on mock data
-async function getAllSubscriptions() {
-  // We can use studentService here if no circular deps exist.
-  // studentService imports from mock-data, classService imports from mock-data.
-  // Circular dependency might happen if studentService imports classService.
-  // Checking studentService... it imports types and mock-data. It does NOT import classService.
-  // Checking classService... imports studentService.
-  // So it is safe to use studentService here.
+// Helper to access subscriptions
+async function getAllSubscriptions(): Promise<Subscription[]> {
   try {
-    // We need to expose getAllSubscriptions in studentService or mock it here
-    // Since getAllSubscriptions is not exposed in studentService interface provided in context,
-    // let's quickly fetch it from localStorage directly to be safe and fast.
     const SUBSCRIPTIONS_KEY = 'manyclass_subscriptions'
     const stored = localStorage.getItem(SUBSCRIPTIONS_KEY)
     if (stored) return JSON.parse(stored)
-    return (await import('@/lib/mock-data')).mockSubscriptions
+    return mockSubscriptions
   } catch (e) {
     return []
   }
