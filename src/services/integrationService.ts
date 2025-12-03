@@ -1,182 +1,142 @@
 import { Integration, IntegrationConfig, IntegrationProvider } from '@/types'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/client'
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
-const COLLECTION_INTEGRATIONS = 'integrations'
-
-const defaultIntegrations: Integration[] = [
+const defaultIntegrationsList = [
   {
-    id: 'google_calendar',
+    integration_id: 'google_calendar',
     name: 'Google Calendar',
     provider: 'google_calendar',
     type: 'oauth',
-    status: 'disconnected',
     logo: 'https://img.usecurling.com/i?q=google-calendar&color=multicolor',
-    description:
-      'Sincronize suas aulas e tarefas automaticamente com sua agenda do Google.',
-    config: {
-      syncToPersonalCalendar: true,
-    },
+    description: 'Sincronize suas aulas com o Google.',
   },
-  {
-    id: 'google_meet',
-    name: 'Google Meet',
-    provider: 'google_meet',
-    type: 'oauth',
-    status: 'disconnected',
-    logo: 'https://img.usecurling.com/i?q=google-meet&color=multicolor',
-    description:
-      'Crie links de reunião automaticamente para suas aulas online.',
-  },
-  {
-    id: 'zoom',
-    name: 'Zoom',
-    provider: 'zoom',
-    type: 'oauth',
-    status: 'disconnected',
-    logo: 'https://img.usecurling.com/i?q=zoom&color=blue',
-    description:
-      'Integre com o Zoom para agendamento e gestão de videochamadas.',
-  },
-  {
-    id: 'microsoft_teams',
-    name: 'Microsoft Teams',
-    provider: 'microsoft_teams',
-    type: 'oauth',
-    status: 'disconnected',
-    logo: 'https://img.usecurling.com/i?q=microsoft-teams&color=multicolor',
-    description: 'Utilize o Microsoft Teams para suas salas de aula virtuais.',
-  },
-  {
-    id: 'whatsapp',
-    name: 'WhatsApp',
-    provider: 'whatsapp',
-    type: 'api_key',
-    status: 'disconnected',
-    logo: 'https://img.usecurling.com/i?q=whatsapp&color=green',
-    description:
-      'Envie lembretes de aula e cobranças automaticamente via WhatsApp.',
-    planRequired: 'intermediate',
-  },
-  {
-    id: 'asaas',
-    name: 'Asaas',
-    provider: 'asaas',
-    type: 'api_key',
-    status: 'disconnected',
-    logo: 'https://img.usecurling.com/i?q=wallet&color=blue',
-    description:
-      'Automatize cobranças, boletos e pix através da integração com Asaas.',
-  },
+  // ... other defaults mapped in getAll
 ]
 
 export const integrationService = {
   getAll: async (): Promise<Integration[]> => {
-    await delay(500)
-    const integrations = db.get<Integration>(COLLECTION_INTEGRATIONS)
+    const { data, error } = await supabase.from('integrations').select('*')
 
-    if (integrations.length > 0) {
-      // Merge with default to ensure all providers exist
-      return defaultIntegrations.map((def) => {
-        const existing = integrations.find((s) => s.id === def.id)
-        return existing
-          ? {
-              ...def,
-              ...existing,
-              config: { ...def.config, ...existing.config },
-            }
-          : def
-      })
-    }
+    if (error) return []
 
-    db.set(COLLECTION_INTEGRATIONS, defaultIntegrations)
-    return defaultIntegrations
+    // Merge with static definitions
+    const defaults = [
+      {
+        id: 'google_calendar',
+        name: 'Google Calendar',
+        provider: 'google_calendar',
+        type: 'oauth',
+        logo: 'https://img.usecurling.com/i?q=google-calendar&color=multicolor',
+        description: 'Sincronize sua agenda.',
+      },
+      {
+        id: 'google_meet',
+        name: 'Google Meet',
+        provider: 'google_meet',
+        type: 'oauth',
+        logo: 'https://img.usecurling.com/i?q=google-meet&color=multicolor',
+        description: 'Links automáticos para aulas.',
+      },
+      {
+        id: 'zoom',
+        name: 'Zoom',
+        provider: 'zoom',
+        type: 'oauth',
+        logo: 'https://img.usecurling.com/i?q=zoom&color=blue',
+        description: 'Integração com Zoom.',
+      },
+      {
+        id: 'asaas',
+        name: 'Asaas',
+        provider: 'asaas',
+        type: 'api_key',
+        logo: 'https://img.usecurling.com/i?q=wallet&color=blue',
+        description: 'Gestão financeira.',
+      },
+    ]
+
+    return defaults.map((def) => {
+      const stored = data.find((d) => d.integration_id === def.id)
+      return {
+        ...def,
+        id: def.id, // Use ID from static def as primary key for UI logic
+        status: (stored?.status as any) || 'disconnected',
+        config: stored?.config,
+        connectedAt: stored?.connected_at,
+      } as Integration
+    })
   },
 
-  getById: async (id: string): Promise<Integration | undefined> => {
-    const integrations = await integrationService.getAll()
-    return integrations.find((i) => i.id === id)
+  connect: async (
+    integrationId: string,
+    config?: IntegrationConfig,
+  ): Promise<void> => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error('User not found')
+
+    await supabase.from('integrations').upsert(
+      {
+        user_id: user.id,
+        integration_id: integrationId,
+        provider: integrationId, // Simplified mapping
+        status: 'connected',
+        config: config || {},
+        connected_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id, integration_id' },
+    )
+  },
+
+  disconnect: async (integrationId: string): Promise<void> => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    await supabase
+      .from('integrations')
+      .update({ status: 'disconnected', connected_at: null })
+      .eq('user_id', user.id)
+      .eq('integration_id', integrationId)
+  },
+
+  updateConfig: async (
+    integrationId: string,
+    config: IntegrationConfig,
+  ): Promise<void> => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    // Fetch existing to merge
+    const { data: existing } = await supabase
+      .from('integrations')
+      .select('config')
+      .eq('user_id', user.id)
+      .eq('integration_id', integrationId)
+      .single()
+
+    const newConfig = { ...existing?.config, ...config }
+
+    await supabase
+      .from('integrations')
+      .update({ config: newConfig })
+      .eq('user_id', user.id)
+      .eq('integration_id', integrationId)
   },
 
   getByProvider: async (
     provider: IntegrationProvider,
   ): Promise<Integration | undefined> => {
-    const integrations = await integrationService.getAll()
-    return integrations.find((i) => i.provider === provider)
-  },
-
-  connect: async (
-    id: string,
-    config?: IntegrationConfig,
-  ): Promise<Integration> => {
-    await delay(1000)
-    const integrations = await integrationService.getAll()
-    const index = integrations.findIndex((i) => i.id === id)
-    if (index === -1) throw new Error('Integration not found')
-
-    // Simulate receiving tokens
-    const mockToken = `mock_token_${Math.random().toString(36).substr(2)}`
-    localStorage.setItem(`token_${id}`, mockToken)
-
-    const updated = {
-      ...integrations[index],
-      status: 'connected' as const,
-      connectedAt: new Date().toISOString(),
-      config: { ...integrations[index].config, ...config },
-    }
-
-    // Persist full list back
-    integrations[index] = updated
-    db.set(COLLECTION_INTEGRATIONS, integrations)
-
-    return updated
-  },
-
-  disconnect: async (id: string): Promise<Integration> => {
-    await delay(500)
-    const integrations = await integrationService.getAll()
-    const index = integrations.findIndex((i) => i.id === id)
-    if (index === -1) throw new Error('Integration not found')
-
-    localStorage.removeItem(`token_${id}`)
-
-    const updated = {
-      ...integrations[index],
-      status: 'disconnected' as const,
-      connectedAt: undefined,
-      config: defaultIntegrations.find((d) => d.id === id)?.config,
-    }
-
-    integrations[index] = updated
-    db.set(COLLECTION_INTEGRATIONS, integrations)
-
-    return updated
-  },
-
-  updateConfig: async (
-    id: string,
-    config: IntegrationConfig,
-  ): Promise<Integration> => {
-    await delay(300)
-    const integrations = await integrationService.getAll()
-    const index = integrations.findIndex((i) => i.id === id)
-    if (index === -1) throw new Error('Integration not found')
-
-    const updated = {
-      ...integrations[index],
-      config: { ...integrations[index].config, ...config },
-    }
-
-    integrations[index] = updated
-    db.set(COLLECTION_INTEGRATIONS, integrations)
-
-    return updated
+    const all = await integrationService.getAll()
+    return all.find((i) => i.provider === provider)
   },
 
   isConnected: async (provider: IntegrationProvider): Promise<boolean> => {
-    const integrations = db.get<Integration>(COLLECTION_INTEGRATIONS)
-    const integration = integrations.find((i) => i.provider === provider)
-    return integration?.status === 'connected'
+    const i = await integrationService.getByProvider(provider)
+    return i?.status === 'connected'
   },
 }

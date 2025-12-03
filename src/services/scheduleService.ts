@@ -1,36 +1,73 @@
 import { TeacherSchedule, TimeSlot } from '@/types'
 import { classService } from './classService'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/client'
 import { addMinutes, parse, isSameDay, format } from 'date-fns'
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
-const COLLECTION_SCHEDULE = 'schedule'
-
-const defaultSchedule: TeacherSchedule = {
-  id: 'default',
-  teacherId: '1',
-  bookingDuration: 60,
-  bookingLinkEnabled: true,
-  availability: [],
-}
 
 export const scheduleService = {
   getSchedule: async (): Promise<TeacherSchedule> => {
-    await delay(500)
-    const schedules = db.get<TeacherSchedule>(COLLECTION_SCHEDULE)
-    if (schedules.length > 0) return schedules[0]
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error('User not found')
 
-    // Init default
-    db.insert(COLLECTION_SCHEDULE, defaultSchedule)
-    return defaultSchedule
+    const { data, error } = await supabase
+      .from('teacher_schedules')
+      .select('*')
+      .eq('teacher_id', user.id)
+      .single()
+
+    if (data) {
+      return {
+        id: data.id,
+        teacherId: data.teacher_id,
+        availability: data.availability || [],
+        bookingDuration: data.booking_duration,
+        bookingLinkEnabled: data.booking_link_enabled,
+      }
+    }
+
+    // Create default if not exists
+    const { data: newSched } = await supabase
+      .from('teacher_schedules')
+      .insert({
+        teacher_id: user.id,
+        availability: [],
+      })
+      .select()
+      .single()
+
+    return {
+      id: newSched.id,
+      teacherId: newSched.teacher_id,
+      availability: [],
+      bookingDuration: 60,
+      bookingLinkEnabled: true,
+    }
   },
 
   updateSchedule: async (
     schedule: TeacherSchedule,
   ): Promise<TeacherSchedule> => {
-    await delay(500)
-    return db.update(COLLECTION_SCHEDULE, schedule.id, schedule)
+    const { data: updated, error } = await supabase
+      .from('teacher_schedules')
+      .update({
+        availability: schedule.availability,
+        booking_duration: schedule.bookingDuration,
+        booking_link_enabled: schedule.bookingLinkEnabled,
+      })
+      .eq('id', schedule.id)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return {
+      id: updated.id,
+      teacherId: updated.teacher_id,
+      availability: updated.availability,
+      bookingDuration: updated.booking_duration,
+      bookingLinkEnabled: updated.booking_link_enabled,
+    }
   },
 
   updateAvailability: async (
@@ -55,10 +92,19 @@ export const scheduleService = {
     const duration = schedule.bookingDuration || 60
 
     daySlots.forEach((slot) => {
-      let current = parse(slot.startTime, 'HH:mm', date)
-      const end = parse(slot.endTime, 'HH:mm', date)
+      // Simple parsing assuming 'HH:mm' format and same date context
+      // Note: Parsing needs date context to function correctly with addMinutes
+      const currentBase = new Date(date)
+      const [startH, startM] = slot.startTime.split(':').map(Number)
+      currentBase.setHours(startH, startM, 0, 0)
 
-      while (addMinutes(current, duration) <= end) {
+      const endBase = new Date(date)
+      const [endH, endM] = slot.endTime.split(':').map(Number)
+      endBase.setHours(endH, endM, 0, 0)
+
+      let current = currentBase
+
+      while (addMinutes(current, duration) <= endBase) {
         const slotStart = current
         const slotEnd = addMinutes(current, duration)
 

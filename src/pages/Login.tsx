@@ -19,9 +19,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Search, Loader2, Mail, User as UserIcon } from 'lucide-react'
+import { Search, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Link, useNavigate } from 'react-router-dom'
+import { supabase } from '@/lib/supabase/client'
 
 export default function Login() {
   const { login, loginWithGoogle } = useAuth()
@@ -31,13 +32,6 @@ export default function Login() {
   const [isGoogleLoggingIn, setIsGoogleLoggingIn] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
   const [isForgotOpen, setIsForgotOpen] = useState(false)
-
-  // Google Mock State
-  const [isGoogleMockOpen, setIsGoogleMockOpen] = useState(false)
-  const [googleMockData, setGoogleMockData] = useState({
-    name: 'Professor Exemplo',
-    email: 'professor@exemplo.com',
-  })
 
   const { toast } = useToast()
   const navigate = useNavigate()
@@ -52,66 +46,55 @@ export default function Login() {
         description: 'Bem-vindo ao Manyclass.',
       })
       navigate('/')
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Erro ao fazer login',
-        description: 'Verifique suas credenciais e tente novamente.',
+        description: error.message || 'Verifique suas credenciais.',
       })
     } finally {
       setIsLoggingIn(false)
     }
   }
 
-  const handleGoogleLoginClick = () => {
-    setIsGoogleMockOpen(true)
-  }
-
-  const confirmGoogleLogin = async () => {
-    if (!googleMockData.email || !googleMockData.name) {
-      toast({
-        variant: 'destructive',
-        title: 'Dados incompletos',
-        description: 'Por favor preencha email e nome para simular o Google.',
-      })
-      return
-    }
-
-    setIsGoogleMockOpen(false)
+  const handleGoogleLogin = async () => {
     setIsGoogleLoggingIn(true)
-
     try {
-      await loginWithGoogle({
-        email: googleMockData.email,
-        name: googleMockData.name,
-      })
-      toast({
-        title: 'Login com Google realizado!',
-        description: `Bem-vindo, ${googleMockData.name}.`,
-      })
-      navigate('/')
-    } catch (error) {
+      await loginWithGoogle()
+      // Note: This will redirect away, so no toast needed here usually
+    } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao fazer login com Google',
-        description: 'Tente novamente mais tarde.',
+        title: 'Erro ao conectar com Google',
+        description: error.message,
       })
-    } finally {
       setIsGoogleLoggingIn(false)
     }
   }
 
-  const handleForgotPassword = () => {
+  const handleForgotPassword = async () => {
     if (!forgotEmail) {
       toast({ variant: 'destructive', title: 'Digite seu email' })
       return
     }
-    toast({
-      title: 'Email enviado',
-      description: 'Verifique sua caixa de entrada para redefinir a senha.',
-    })
-    setIsForgotOpen(false)
-    setForgotEmail('')
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      if (error) throw error
+      toast({
+        title: 'Email enviado',
+        description: 'Verifique sua caixa de entrada para redefinir a senha.',
+      })
+      setIsForgotOpen(false)
+      setForgotEmail('')
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao enviar email',
+        description: error.message,
+      })
+    }
   }
 
   return (
@@ -206,7 +189,7 @@ export default function Login() {
               variant="outline"
               className="w-full transition-all hover:scale-[1.02] gap-2"
               disabled={isLoggingIn || isGoogleLoggingIn}
-              onClick={handleGoogleLoginClick}
+              onClick={handleGoogleLogin}
             >
               {isGoogleLoggingIn ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -231,68 +214,6 @@ export default function Login() {
                 </>
               )}
             </Button>
-
-            {/* Google Mock Dialog */}
-            <Dialog open={isGoogleMockOpen} onOpenChange={setIsGoogleMockOpen}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Simulação de Login Google</DialogTitle>
-                  <DialogDescription>
-                    Como este é um ambiente de demonstração sem backend, simule
-                    o retorno de dados do Google aqui.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="google-name"
-                      className="flex items-center gap-2"
-                    >
-                      <UserIcon className="h-4 w-4" /> Nome do Usuário
-                    </Label>
-                    <Input
-                      id="google-name"
-                      value={googleMockData.name}
-                      onChange={(e) =>
-                        setGoogleMockData({
-                          ...googleMockData,
-                          name: e.target.value,
-                        })
-                      }
-                      placeholder="Seu Nome"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="google-email"
-                      className="flex items-center gap-2"
-                    >
-                      <Mail className="h-4 w-4" /> Email Google
-                    </Label>
-                    <Input
-                      id="google-email"
-                      type="email"
-                      value={googleMockData.email}
-                      onChange={(e) =>
-                        setGoogleMockData({
-                          ...googleMockData,
-                          email: e.target.value,
-                        })
-                      }
-                      placeholder="seu@gmail.com"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    onClick={confirmGoogleLogin}
-                    className="w-full sm:w-auto"
-                  >
-                    Continuar como {googleMockData.name || 'Usuário'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">

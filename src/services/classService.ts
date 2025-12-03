@@ -3,12 +3,8 @@ import {
   CalendarEvent,
   CreateEventDTO,
   UpdateEventDTO,
-  Subscription,
 } from '@/types'
-import { db } from '@/lib/db'
-import { studentService } from './studentService'
-import { taskService } from './taskService'
-import { integrationService } from './integrationService'
+import { supabase } from '@/lib/supabase/client'
 import {
   startOfMonth,
   endOfMonth,
@@ -16,118 +12,211 @@ import {
   addMonths,
   subMonths,
   addMinutes,
-  isWithinInterval,
-  parseISO,
 } from 'date-fns'
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
-const COLLECTION_CLASSES = 'classes'
-const COLLECTION_EVENTS = 'events'
 const DAYS_MAP = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 export const classService = {
-  // Classes Management
   getAllClasses: async (): Promise<ClassGroup[]> => {
-    await delay(500)
-    return db.get<ClassGroup>(COLLECTION_CLASSES)
+    const { data: classes, error } = await supabase
+      .from('classes')
+      .select('*, class_students(student_id, custom_price)')
+
+    if (error) {
+      console.error(error)
+      return []
+    }
+
+    return classes.map((c) => ({
+      id: c.id,
+      teacherId: c.teacher_id,
+      name: c.name,
+      schedule: c.schedule || '',
+      days: c.days || [],
+      startTime: c.start_time,
+      duration: c.duration,
+      status: c.status as any,
+      billingModel: c.billing_model as any,
+      price: c.price,
+      category: c.category as any,
+      studentLimit: c.student_limit,
+      meetLink: c.meet_link,
+      color: c.color,
+      studentIds: c.class_students.map((cs: any) => cs.student_id),
+      customStudentPrices: c.class_students.reduce(
+        (acc: any, cs: any) => ({
+          ...acc,
+          [cs.student_id]: cs.custom_price,
+        }),
+        {},
+      ),
+    }))
   },
 
   getByTeacherId: async (teacherId: string): Promise<ClassGroup[]> => {
-    await delay(300)
-    const classes = db.get<ClassGroup>(COLLECTION_CLASSES)
-    return classes.filter((c) => c.teacherId === teacherId)
+    const { data: classes, error } = await supabase
+      .from('classes')
+      .select('*, class_students(student_id, custom_price)')
+      .eq('teacher_id', teacherId)
+
+    if (error) return []
+
+    return classes.map((c) => ({
+      id: c.id,
+      teacherId: c.teacher_id,
+      name: c.name,
+      schedule: c.schedule || '',
+      days: c.days || [],
+      startTime: c.start_time,
+      duration: c.duration,
+      status: c.status as any,
+      billingModel: c.billing_model as any,
+      price: c.price,
+      category: c.category as any,
+      studentLimit: c.student_limit,
+      meetLink: c.meet_link,
+      color: c.color,
+      studentIds: c.class_students.map((cs: any) => cs.student_id),
+      customStudentPrices: c.class_students.reduce(
+        (acc: any, cs: any) => ({
+          ...acc,
+          [cs.student_id]: cs.custom_price,
+        }),
+        {},
+      ),
+    }))
   },
 
   getClassById: async (id: string): Promise<ClassGroup | undefined> => {
-    return db.getById<ClassGroup>(COLLECTION_CLASSES, id)
+    const { data: c, error } = await supabase
+      .from('classes')
+      .select('*, class_students(student_id, custom_price)')
+      .eq('id', id)
+      .single()
+
+    if (error || !c) return undefined
+
+    return {
+      id: c.id,
+      teacherId: c.teacher_id,
+      name: c.name,
+      schedule: c.schedule || '',
+      days: c.days || [],
+      startTime: c.start_time,
+      duration: c.duration,
+      status: c.status as any,
+      billingModel: c.billing_model as any,
+      price: c.price,
+      category: c.category as any,
+      studentLimit: c.student_limit,
+      meetLink: c.meet_link,
+      color: c.color,
+      studentIds: c.class_students.map((cs: any) => cs.student_id),
+      customStudentPrices: c.class_students.reduce(
+        (acc: any, cs: any) => ({
+          ...acc,
+          [cs.student_id]: cs.custom_price,
+        }),
+        {},
+      ),
+    }
   },
 
   createClass: async (data: Omit<ClassGroup, 'id'>): Promise<ClassGroup> => {
-    await delay(500)
+    // Insert class
+    const { data: newClass, error } = await supabase
+      .from('classes')
+      .insert({
+        teacher_id: data.teacherId,
+        name: data.name,
+        schedule: data.schedule,
+        days: data.days,
+        start_time: data.startTime,
+        duration: data.duration,
+        status: data.status,
+        billing_model: data.billingModel,
+        price: data.price,
+        category: data.category,
+        student_limit: data.studentLimit,
+        meet_link: data.meetLink,
+        color: data.color,
+      })
+      .select()
+      .single()
 
-    // Google Meet Integration
-    let meetLink = undefined
-    const isMeetConnected = await integrationService.isConnected('google_meet')
-    if (isMeetConnected) {
-      // Mock generating a meet link
-      meetLink = `https://meet.google.com/${Math.random().toString(36).substr(2, 3)}-${Math.random().toString(36).substr(2, 4)}-${Math.random().toString(36).substr(2, 3)}`
+    if (error) throw error
+
+    // Handle student relations
+    if (data.studentIds && data.studentIds.length > 0) {
+      const relations = data.studentIds.map((sid) => ({
+        class_id: newClass.id,
+        student_id: sid,
+        custom_price: data.customStudentPrices?.[sid],
+      }))
+      await supabase.from('class_students').insert(relations)
     }
 
-    const newClass = {
-      ...data,
-      id: Math.random().toString(36).substr(2, 9),
-      meetLink,
-    }
-    db.insert(COLLECTION_CLASSES, newClass)
-
-    // Auto-generate subscriptions logic
-    if (newClass.billingModel === 'per_student') {
-      if (newClass.studentIds.length > 0) {
-        for (const studentId of newClass.studentIds) {
-          await studentService.createSubscription({
-            studentId,
-            plan: 'student_monthly',
-            status: 'pending',
-            startDate: new Date().toISOString(),
-            nextBillingDate: new Date().toISOString(),
-            amount: newClass.price,
-          })
-        }
-      }
-    }
-
-    return newClass
+    return { ...data, id: newClass.id }
   },
 
   updateClass: async (
     id: string,
     data: Partial<ClassGroup>,
   ): Promise<ClassGroup> => {
-    await delay(300)
-    const cls = db.getById<ClassGroup>(COLLECTION_CLASSES, id)
-    if (!cls) throw new Error('Class not found')
-
-    // Check if Google Meet is connected and link is missing
-    const isMeetConnected = await integrationService.isConnected('google_meet')
-    let meetLink = cls.meetLink
-    if (isMeetConnected && !meetLink) {
-      meetLink = `https://meet.google.com/${Math.random().toString(36).substr(2, 3)}-${Math.random().toString(36).substr(2, 4)}-${Math.random().toString(36).substr(2, 3)}`
+    const updates: any = {
+      name: data.name,
+      schedule: data.schedule,
+      days: data.days,
+      start_time: data.startTime,
+      duration: data.duration,
+      status: data.status,
+      billing_model: data.billingModel,
+      price: data.price,
+      category: data.category,
+      student_limit: data.studentLimit,
+      meet_link: data.meetLink,
+      color: data.color,
     }
 
-    // Check if new students were added to generate subscriptions
-    const oldStudentIds = cls.studentIds
-    const newStudentIds = data.studentIds || []
-
-    const addedStudents = newStudentIds.filter(
-      (sid) => !oldStudentIds.includes(sid),
+    Object.keys(updates).forEach(
+      (key) => updates[key] === undefined && delete updates[key],
     )
 
-    if (addedStudents.length > 0 && cls.billingModel === 'per_student') {
-      for (const studentId of addedStudents) {
-        // Check for custom price override
-        const price = cls.customStudentPrices?.[studentId] ?? cls.price
+    // Update main table
+    await supabase.from('classes').update(updates).eq('id', id)
 
-        await studentService.createSubscription({
-          studentId,
-          plan: 'student_monthly',
-          status: 'pending',
-          startDate: new Date().toISOString(),
-          nextBillingDate: new Date().toISOString(),
-          amount: price,
-        })
+    // Sync students if provided
+    if (data.studentIds) {
+      // Delete existing not in new list
+      await supabase
+        .from('class_students')
+        .delete()
+        .eq('class_id', id)
+        .not('student_id', 'in', `(${data.studentIds.join(',')})`)
+
+      // Upsert (requires conflict handling or check exist)
+      // Simple approach: Select existing, filter new, insert
+      const { data: existing } = await supabase
+        .from('class_students')
+        .select('student_id')
+        .eq('class_id', id)
+
+      const existingIds = existing?.map((e) => e.student_id) || []
+      const toInsert = data.studentIds
+        .filter((sid) => !existingIds.includes(sid))
+        .map((sid) => ({
+          class_id: id,
+          student_id: sid,
+        }))
+
+      if (toInsert.length > 0) {
+        await supabase.from('class_students').insert(toInsert)
       }
     }
 
-    let updated = { ...cls, ...data, meetLink }
-
-    // Update schedule string if days/time changed
-    if (data.days || data.startTime) {
-      const daysStr = updated.days.map((d) => DAYS_MAP[d]).join('/')
-      updated.schedule = `${daysStr} ${updated.startTime}`
-    }
-
-    return db.update(COLLECTION_CLASSES, id, updated)
+    const updated = await classService.getClassById(id)
+    if (!updated) throw new Error('Update failed')
+    return updated
   },
 
   updateStudentPrice: async (
@@ -135,141 +224,128 @@ export const classService = {
     studentId: string,
     price: number,
   ): Promise<void> => {
-    const cls = db.getById<ClassGroup>(COLLECTION_CLASSES, classId)
-    if (!cls) throw new Error('Class not found')
-
-    const customPrices = cls.customStudentPrices || {}
-    customPrices[studentId] = price
-
-    db.update(COLLECTION_CLASSES, classId, {
-      customStudentPrices: customPrices,
-    })
+    await supabase
+      .from('class_students')
+      .update({ custom_price: price })
+      .match({ class_id: classId, student_id: studentId })
   },
 
-  // Events Management
+  // Events
   getEvents: async (): Promise<CalendarEvent[]> => {
-    await delay(300)
-    try {
-      const events = db.get<CalendarEvent>(COLLECTION_EVENTS)
+    // 1. Fetch DB events
+    const { data: dbEvents } = await supabase.from('events').select('*')
 
-      // 1. Fetch tasks with due dates and convert to events
-      const tasks = await taskService.getAllTasks()
-      const taskEvents: CalendarEvent[] = tasks
-        .filter((t) => t.dueDate)
-        .map((t) => ({
-          id: t.id,
-          title: t.title,
-          description: t.description,
-          start_time: t.dueDate!,
-          end_time: t.dueDate!,
-          type: 'task',
-          student_ids: t.studentId ? [t.studentId] : [],
-          color: t.color || 'blue',
-        }))
+    // 2. Generate auto events from classes
+    const classes = await classService.getAllClasses()
+    const classEvents: CalendarEvent[] = []
 
-      // 2. Generate Class Events automatically
-      const classes = await classService.getAllClasses()
+    const today = new Date()
+    const start = startOfMonth(subMonths(today, 1))
+    const end = endOfMonth(addMonths(today, 1))
+    const interval = eachDayOfInterval({ start, end })
 
-      // Check Integration Status for Calendar Sync
-      const calendarIntegration =
-        await integrationService.getByProvider('google_calendar')
-      const isCalendarConnected = calendarIntegration?.status === 'connected'
-      const shouldSyncToPersonal =
-        calendarIntegration?.config?.syncToPersonalCalendar ?? false
+    classes.forEach((cls) => {
+      if (cls.status !== 'active') return
 
-      const classEvents: CalendarEvent[] = []
+      interval.forEach((day) => {
+        if (cls.days.includes(day.getDay())) {
+          const [hours, minutes] = cls.startTime.split(':').map(Number)
+          const startTime = new Date(day)
+          startTime.setHours(hours, minutes, 0, 0)
+          const endTime = addMinutes(startTime, cls.duration || 60)
 
-      const today = new Date()
-      const start = startOfMonth(subMonths(today, 1))
-      const end = endOfMonth(addMonths(today, 1))
-      const interval = eachDayOfInterval({ start, end })
-
-      const allSubscriptions = db.get<Subscription>('subscriptions')
-
-      classes.forEach((cls) => {
-        if (cls.status !== 'active') return
-
-        interval.forEach((day) => {
-          if (cls.days.includes(day.getDay())) {
-            const [hours, minutes] = cls.startTime.split(':').map(Number)
-            const startTime = new Date(day)
-            startTime.setHours(hours, minutes, 0, 0)
-            const endTime = addMinutes(startTime, cls.duration || 60)
-
-            // Filter students based on their subscription period
-            const activeStudentIds = cls.studentIds.filter((studentId) => {
-              if (cls.billingModel !== 'per_student') return true
-
-              const sub = allSubscriptions.find(
-                (s) => s.studentId === studentId,
-              )
-              if (!sub) return false
-
-              const subStart = parseISO(sub.startDate)
-              const subEnd = parseISO(sub.nextBillingDate)
-
-              if (sub.status === 'expired' || sub.status === 'past_due') {
-                return isWithinInterval(startTime, {
-                  start: subStart,
-                  end: subEnd,
-                })
-              }
-
-              return sub.status === 'active' || sub.status === 'pending'
-            })
-
-            if (activeStudentIds.length > 0) {
-              classEvents.push({
-                id: `auto-${cls.id}-${day.toISOString()}`,
-                title: cls.name,
-                description: `Aula de ${cls.name}. ${cls.meetLink ? `Link: ${cls.meetLink}` : ''}`,
-                start_time: startTime.toISOString(),
-                end_time: endTime.toISOString(),
-                type: 'class',
-                student_ids: activeStudentIds,
-                color: cls.color || 'green',
-                classId: cls.id,
-                link: cls.meetLink,
-                isSynced: isCalendarConnected && shouldSyncToPersonal,
-              })
-            }
-          }
-        })
+          classEvents.push({
+            id: `auto-${cls.id}-${day.toISOString()}`,
+            title: cls.name,
+            description: `Aula: ${cls.name}`,
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            type: 'class',
+            student_ids: cls.studentIds,
+            color: cls.color || 'green',
+            classId: cls.id,
+            link: cls.meetLink,
+          })
+        }
       })
+    })
 
-      return [...events, ...taskEvents, ...classEvents]
-    } catch (e) {
-      console.error('Error loading events', e)
-      return []
-    }
+    const mappedDbEvents =
+      dbEvents?.map((e) => ({
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        start_time: e.start_time,
+        end_time: e.end_time,
+        type: e.type as any,
+        student_ids: e.student_ids || [],
+        color: e.color,
+        isSynced: e.is_synced,
+      })) || []
+
+    return [...mappedDbEvents, ...classEvents]
   },
 
   createEvent: async (data: CreateEventDTO): Promise<CalendarEvent> => {
-    await delay(300)
+    const { data: event, error } = await supabase
+      .from('events')
+      .insert({
+        title: data.title,
+        description: data.description,
+        start_time: data.start_time,
+        end_time: data.end_time,
+        type: data.type,
+        student_ids: data.student_ids,
+        color: data.color,
+      })
+      .select()
+      .single()
 
-    const calendarIntegration =
-      await integrationService.getByProvider('google_calendar')
-    const isCalendarConnected = calendarIntegration?.status === 'connected'
-    const shouldSyncToPersonal =
-      calendarIntegration?.config?.syncToPersonalCalendar ?? false
+    if (error) throw error
 
-    const newEvent: CalendarEvent = {
-      ...data,
-      id: Math.random().toString(36).substr(2, 9),
-      color: data.color || 'blue',
-      isSynced: isCalendarConnected && shouldSyncToPersonal,
+    return {
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      start_time: event.start_time,
+      end_time: event.end_time,
+      type: event.type as any,
+      student_ids: event.student_ids,
+      color: event.color,
     }
-
-    return db.insert(COLLECTION_EVENTS, newEvent)
   },
 
   updateEvent: async (data: UpdateEventDTO): Promise<CalendarEvent> => {
-    await delay(300)
-    return db.update(COLLECTION_EVENTS, data.id, data)
+    const { data: event, error } = await supabase
+      .from('events')
+      .update({
+        title: data.title,
+        description: data.description,
+        start_time: data.start_time,
+        end_time: data.end_time,
+        type: data.type,
+        student_ids: data.student_ids,
+        color: data.color,
+      })
+      .eq('id', data.id)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return {
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      start_time: event.start_time,
+      end_time: event.end_time,
+      type: event.type as any,
+      student_ids: event.student_ids,
+      color: event.color,
+    }
   },
 
   deleteEvent: async (id: string): Promise<void> => {
-    await delay(300)
-    db.delete(COLLECTION_EVENTS, id)
+    await supabase.from('events').delete().eq('id', id)
   },
 }

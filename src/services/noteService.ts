@@ -1,57 +1,94 @@
 import { ClassNote } from '@/types'
-import { db } from '@/lib/db'
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
-const COLLECTION_NOTES = 'class_notes'
+import { supabase } from '@/lib/supabase/client'
 
 export const noteService = {
   getAll: async (): Promise<ClassNote[]> => {
-    await delay(200)
-    return db.get<ClassNote>(COLLECTION_NOTES)
-  },
-
-  getByEventId: async (eventId: string): Promise<ClassNote | undefined> => {
-    await delay(200)
-    const notes = db.get<ClassNote>(COLLECTION_NOTES)
-    return notes.find((n) => n.eventId === eventId)
+    const { data, error } = await supabase.from('class_notes').select('*')
+    if (error) return []
+    return data.map((n) => ({
+      id: n.id,
+      eventId: n.event_id,
+      classId: n.class_id,
+      studentId: n.student_id,
+      teacherId: n.teacher_id,
+      content: n.content,
+      createdAt: n.created_at,
+      updatedAt: n.updated_at,
+    }))
   },
 
   getByStudentId: async (studentId: string): Promise<ClassNote[]> => {
-    await delay(300)
-    const notes = db.get<ClassNote>(COLLECTION_NOTES)
-    return notes.filter((n) => n.studentId === studentId)
+    const { data, error } = await supabase
+      .from('class_notes')
+      .select('*')
+      .eq('student_id', studentId)
+
+    if (error) return []
+    return data.map((n) => ({
+      id: n.id,
+      eventId: n.event_id,
+      classId: n.class_id,
+      studentId: n.student_id,
+      teacherId: n.teacher_id,
+      content: n.content,
+      createdAt: n.created_at,
+      updatedAt: n.updated_at,
+    }))
   },
 
   save: async (
     data: Omit<ClassNote, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
   ): Promise<ClassNote> => {
-    await delay(400)
-    const notes = db.get<ClassNote>(COLLECTION_NOTES)
+    // Upsert based on event_id (one note per event per student generally, but schema PK is id)
+    // Logic: if note exists for this event+student, update it.
+    const { data: existing } = await supabase
+      .from('class_notes')
+      .select('id')
+      .eq('event_id', data.eventId)
+      .eq('student_id', data.studentId)
+      .single()
 
-    // Check if note exists for this event to update instead of create duplicate
-    const existingNote = notes.find((n) => n.eventId === data.eventId)
-
-    if (existingNote) {
-      // Update existing
-      return db.update(COLLECTION_NOTES, existingNote.id, {
-        ...data,
-        updatedAt: new Date().toISOString(),
-      })
+    const payload = {
+      event_id: data.eventId,
+      class_id: data.classId,
+      student_id: data.studentId,
+      teacher_id: data.teacherId,
+      content: data.content,
+      updated_at: new Date().toISOString(),
     }
 
-    // Create new
-    const newNote: ClassNote = {
-      ...data,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+    let result
+    if (existing) {
+      result = await supabase
+        .from('class_notes')
+        .update(payload)
+        .eq('id', existing.id)
+        .select()
+        .single()
+    } else {
+      result = await supabase
+        .from('class_notes')
+        .insert(payload)
+        .select()
+        .single()
     }
-    return db.insert(COLLECTION_NOTES, newNote)
+
+    if (result.error) throw result.error
+    const n = result.data
+
+    return {
+      id: n.id,
+      eventId: n.event_id,
+      classId: n.class_id,
+      studentId: n.student_id,
+      teacherId: n.teacher_id,
+      content: n.content,
+      createdAt: n.created_at,
+      updatedAt: n.updated_at,
+    }
   },
 
   delete: async (id: string): Promise<void> => {
-    await delay(200)
-    db.delete(COLLECTION_NOTES, id)
+    await supabase.from('class_notes').delete().eq('id', id)
   },
 }
