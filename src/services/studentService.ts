@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase/client'
 
 export const studentService = {
   getAll: async (): Promise<Student[]> => {
+    // RLS will filter this to only show students relevant to the current user
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -23,9 +24,7 @@ export const studentService = {
   },
 
   getByTeacherId: async (teacherId: string): Promise<Student[]> => {
-    // For demo, we fetch all students. In real app, filter by teacher relation.
-    // Optimization: Fetch only students linked via class_students if possible,
-    // or rely on profiles if all students are visible to teacher in this context.
+    // RLS handles filtering, teacherId param is largely redundant for security but good for explicit intent if using admin API
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -67,8 +66,13 @@ export const studentService = {
   },
 
   create: async (
-    student: Omit<Student, 'id'> & { password?: string },
+    student: Omit<Student, 'id'> & { password?: string; teacherId?: string },
   ): Promise<Student> => {
+    // Get current user ID to set as created_by if not explicitly provided
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser()
+
     const { data, error } = await supabase.functions.invoke('create-user', {
       body: {
         email: student.email,
@@ -78,6 +82,7 @@ export const studentService = {
         phone: student.phone,
         user_metadata: {
           avatar_url: student.avatar,
+          created_by: student.teacherId || currentUser?.id,
         },
       },
     })
@@ -100,7 +105,10 @@ export const studentService = {
   },
 
   createBulk: async (
-    studentsData: (Omit<Student, 'id'> & { password?: string })[],
+    studentsData: (Omit<Student, 'id'> & {
+      password?: string
+      teacherId?: string
+    })[],
   ): Promise<Student[]> => {
     const createdStudents: Student[] = []
 

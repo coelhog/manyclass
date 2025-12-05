@@ -7,18 +7,46 @@ export const materialService = {
       .from('materials')
       .select('*, material_access(student_id)')
 
-    if (error) return []
+    if (error || !data) return []
 
-    return data.map((m) => ({
-      id: m.id,
-      teacherId: m.teacher_id,
-      title: m.title,
-      description: m.description,
-      fileUrl: m.file_url,
-      fileType: m.file_type,
-      uploadedAt: m.uploaded_at,
-      studentIds: m.material_access.map((ma: any) => ma.student_id),
-    }))
+    // Since bucket is private, we must generate signed URLs for access
+    return await Promise.all(
+      data.map(async (m) => {
+        // Extract path from file_url or construct it
+        // Assuming file_url stores just the path (teacherId/filename) in new version,
+        // OR full url. We try to extract path.
+        let path = m.file_url || ''
+
+        // Basic check if it looks like a full URL or a path
+        if (path.startsWith('http')) {
+          const urlParts = path.split('/materials/')
+          if (urlParts.length > 1) {
+            path = urlParts[1]
+          }
+        }
+
+        let signedUrl = m.file_url // Default fall back
+        if (path) {
+          const { data: signedData } = await supabase.storage
+            .from('materials')
+            .createSignedUrl(path, 3600) // 1 hour expiry
+          if (signedData) {
+            signedUrl = signedData.signedUrl
+          }
+        }
+
+        return {
+          id: m.id,
+          teacherId: m.teacher_id,
+          title: m.title,
+          description: m.description,
+          fileUrl: signedUrl,
+          fileType: m.file_type,
+          uploadedAt: m.uploaded_at,
+          studentIds: m.material_access.map((ma: any) => ma.student_id),
+        }
+      }),
+    )
   },
 
   create: async (
@@ -27,35 +55,30 @@ export const materialService = {
       fileUrl?: string
     },
   ): Promise<Material> => {
-    let finalFileUrl = material.fileUrl || ''
+    let filePath = material.fileUrl || ''
 
     // Handle File Upload if provided
     if (material.file) {
       const fileExt = material.file.name.split('.').pop()
       const fileName = `${Date.now()}.${fileExt}`
-      const filePath = `${material.teacherId}/${fileName}`
+      filePath = `${material.teacherId}/${fileName}`
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('materials')
         .upload(filePath, material.file)
 
       if (uploadError) throw uploadError
-
-      // Get Public URL
-      const { data: urlData } = supabase.storage
-        .from('materials')
-        .getPublicUrl(filePath)
-
-      finalFileUrl = urlData.publicUrl
     }
 
+    // We store the filePath in file_url column for RLS enabled buckets
+    // so we can sign it later
     const { data: m, error } = await supabase
       .from('materials')
       .insert({
         teacher_id: material.teacherId,
         title: material.title,
         description: material.description,
-        file_url: finalFileUrl,
+        file_url: filePath,
         file_type: material.fileType,
       })
       .select()
@@ -72,12 +95,21 @@ export const materialService = {
       )
     }
 
+    // Generate immediate signed URL for return
+    let signedUrl = filePath
+    if (material.file) {
+      const { data: signedData } = await supabase.storage
+        .from('materials')
+        .createSignedUrl(filePath, 3600)
+      if (signedData) signedUrl = signedData.signedUrl
+    }
+
     return {
       id: m.id,
       teacherId: m.teacher_id,
       title: m.title,
       description: m.description,
-      fileUrl: m.file_url,
+      fileUrl: signedUrl,
       fileType: m.file_type,
       uploadedAt: m.uploaded_at,
       studentIds: material.studentIds,
@@ -87,21 +119,34 @@ export const materialService = {
   update: async (id: string, data: Partial<Material>): Promise<Material> => {
     if (data.studentIds) {
       await supabase.from('material_access').delete().eq('material_id', id)
-      await supabase.from('material_access').insert(
-        data.studentIds.map((sid) => ({
-          material_id: id,
-          student_id: sid,
-        })),
-      )
+      if (data.studentIds.length > 0) {
+        await supabase.from('material_access').insert(
+          data.studentIds.map((sid) => ({
+            material_id: id,
+            student_id: sid,
+          })),
+        )
+      }
     }
 
+    // Note: currently we just refresh getAll which handles signing
     const updated = await materialService.getAll()
     return updated.find((m) => m.id === id)!
   },
 
   delete: async (id: string): Promise<void> => {
-    // Fetch material first to get path if we want to delete from storage too
-    // For now, just deleting record
+    // Get path first to delete file
+    const { data: m } = await supabase
+      .from('materials')
+      .select('file_url')
+      .eq('id', id)
+      .single()
+
+    if (m?.file_url) {
+      // Try to delete from storage if it looks like a path
+      await supabase.storage.from('materials').remove([m.file_url])
+    }
+
     await supabase.from('materials').delete().eq('id', id)
   },
 
@@ -111,37 +156,43 @@ export const materialService = {
       .select('material_id, materials(*)')
       .eq('student_id', studentId)
 
-    if (error) return []
+    if (error || !data) return []
 
-    return data.map((d: any) => ({
-      id: d.materials.id,
-      teacherId: d.materials.teacher_id,
-      title: d.materials.title,
-      description: d.materials.description,
-      fileUrl: d.materials.file_url,
-      fileType: d.materials.file_type,
-      uploadedAt: d.materials.uploaded_at,
-      studentIds: [studentId],
-    }))
+    return await Promise.all(
+      data.map(async (d: any) => {
+        let path = d.materials.file_url || ''
+        if (path.startsWith('http')) {
+          const urlParts = path.split('/materials/')
+          if (urlParts.length > 1) {
+            path = urlParts[1]
+          }
+        }
+
+        let signedUrl = d.materials.file_url
+        if (path) {
+          const { data: signedData } = await supabase.storage
+            .from('materials')
+            .createSignedUrl(path, 3600)
+          if (signedData) {
+            signedUrl = signedData.signedUrl
+          }
+        }
+
+        return {
+          id: d.materials.id,
+          teacherId: d.materials.teacher_id,
+          title: d.materials.title,
+          description: d.materials.description,
+          fileUrl: signedUrl,
+          fileType: d.materials.file_type,
+          uploadedAt: d.materials.uploaded_at,
+          studentIds: [studentId],
+        }
+      }),
+    )
   },
 
   getByTeacherId: async (teacherId: string): Promise<Material[]> => {
-    const { data, error } = await supabase
-      .from('materials')
-      .select('*, material_access(student_id)')
-      .eq('teacher_id', teacherId)
-
-    if (error) return []
-
-    return data.map((m) => ({
-      id: m.id,
-      teacherId: m.teacher_id,
-      title: m.title,
-      description: m.description,
-      fileUrl: m.file_url,
-      fileType: m.file_type,
-      uploadedAt: m.uploaded_at,
-      studentIds: m.material_access.map((ma: any) => ma.student_id),
-    }))
+    return materialService.getAll() // RLS handles filtering for teacher too
   },
 }
