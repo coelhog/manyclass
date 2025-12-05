@@ -38,7 +38,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  // We don't expose session but track it internally if needed, mostly used to check changes
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -64,8 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       fetchingIdRef.current = userId
-      // Only set loading to true if it's not already, to avoid unnecessary re-renders,
-      // but usually we want to ensure we block interaction while fetching profile.
+      // Only set loading to true if it's not already
       setIsLoading(true)
 
       const { data: profile, error } = await supabase
@@ -123,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           // Already have the user loaded, ensure loading is off
           // This handles cases where auth state event fires but user is already stable
-          if (isLoading) setIsLoading(false)
+          setIsLoading(false)
         }
       } else {
         // No session, clear user and loading
@@ -149,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [fetchProfile, isLoading])
+  }, [fetchProfile]) // Removed isLoading from dependencies to prevent loops
 
   const checkSubscriptionAccess = () => {
     if (!user) return { allowed: false, reason: 'Not logged in' }
