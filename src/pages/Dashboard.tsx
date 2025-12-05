@@ -51,10 +51,13 @@ export default function Dashboard() {
     { month: 'Jun', revenue: 2800 },
   ]
 
+  const userId = user?.id
+  const userRole = user?.role
+
   useEffect(() => {
     // Only fetch if user exists and is a teacher.
     // If user is student, StudentDashboard handles fetching.
-    if (!user || user.role === 'student') return
+    if (!userId || userRole === 'student') return
 
     const loadDashboardData = async () => {
       setIsLoading(true)
@@ -62,8 +65,8 @@ export default function Dashboard() {
         // Fetch data for logged-in teacher
         const [students, classes, tasks, courses, payments] = await Promise.all(
           [
-            studentService.getByTeacherId(user.id),
-            classService.getByTeacherId(user.id),
+            studentService.getByTeacherId(userId),
+            classService.getByTeacherId(userId),
             taskService.getAllTasks(),
             courseService.getAll(),
             studentService.getAllPayments(),
@@ -103,7 +106,7 @@ export default function Dashboard() {
     }
 
     loadDashboardData()
-  }, [user?.id, user?.role]) // Safe dependency on primitive values
+  }, [userId, userRole])
 
   if (user?.role === 'student') {
     return <StudentDashboard />

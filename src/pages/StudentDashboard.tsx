@@ -35,20 +35,22 @@ export default function StudentDashboard() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
+  const userId = user?.id
+
   useEffect(() => {
     const loadData = async () => {
-      if (!user) return
+      if (!userId) return
 
       setIsLoading(true)
       try {
         const [allTasks, sub, allPayments] = await Promise.all([
           taskService.getAllTasks(),
-          studentService.getSubscriptionByStudentId(user.id),
+          studentService.getSubscriptionByStudentId(userId),
           studentService.getAllPayments(),
         ])
         setTasks(allTasks)
         setSubscription(sub)
-        setPayments(allPayments.filter((p) => p.studentId === user.id))
+        setPayments(allPayments.filter((p) => p.studentId === userId))
       } catch (error) {
         console.error('Error loading student data:', error)
       } finally {
@@ -56,7 +58,7 @@ export default function StudentDashboard() {
       }
     }
     loadData()
-  }, [user?.id]) // Use user.id to prevent excessive re-renders
+  }, [userId])
 
   const pendingTasks = tasks.filter((t) => t.status === 'open').slice(0, 3)
 
