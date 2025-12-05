@@ -53,7 +53,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     const loadDashboardData = async () => {
-      if (!user) return
+      // Safety check: if user is missing, we shouldn't be here (Layout protects),
+      // but we must ensure we don't get stuck in loading state.
+      if (!user) {
+        setIsLoading(false)
+        return
+      }
+
       setIsLoading(true)
       try {
         // Fetch data for logged-in teacher

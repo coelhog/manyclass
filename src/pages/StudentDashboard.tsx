@@ -37,7 +37,10 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     const loadData = async () => {
-      if (!user) return
+      if (!user) {
+        setIsLoading(false)
+        return
+      }
       setIsLoading(true)
       try {
         const [allTasks, sub, allPayments] = await Promise.all([
@@ -48,6 +51,8 @@ export default function StudentDashboard() {
         setTasks(allTasks)
         setSubscription(sub)
         setPayments(allPayments.filter((p) => p.studentId === user.id))
+      } catch (error) {
+        console.error('Error loading student data:', error)
       } finally {
         setIsLoading(false)
       }
@@ -70,10 +75,10 @@ export default function StudentDashboard() {
     : undefined
 
   // Check for overdue payments or expired subscription
-  const hasOverduePayments = payments.some((p) => p.status === 'overdue')
+  const hasOverdue payments = payments.some((p) => p.status === 'overdue')
   const isSubscriptionExpired =
     subscription?.status === 'expired' || subscription?.status === 'past_due'
-  const isAccessRestricted = hasOverduePayments || isSubscriptionExpired
+  const isAccessRestricted = hasOverdue payments || isSubscriptionExpired
 
   return (
     <PageTransition className="space-y-8">
@@ -120,8 +125,12 @@ export default function StudentDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-primary">3</div>
-            <p className="text-xs text-muted-foreground">2 para esta semana</p>
+            <div className="text-3xl font-bold text-primary">
+              {tasks.filter((t) => t.status === 'open').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {pendingTasks.length} recentes
+            </p>
           </CardContent>
         </Card>
         <Card className="hover:shadow-md transition-shadow">
@@ -132,7 +141,9 @@ export default function StudentDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">12</div>
+            <div className="text-3xl font-bold">
+              {tasks.filter((t) => t.status === 'completed').length}
+            </div>
             <p className="text-xs text-muted-foreground">Média de notas: 8.5</p>
           </CardContent>
         </Card>
@@ -196,6 +207,11 @@ export default function StudentDashboard() {
                   </Button>
                 </div>
               ))}
+              {pendingTasks.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhuma tarefa pendente.
+                </p>
+              )}
             </div>
             <div className="mt-4 pt-4 border-t">
               <Button variant="ghost" className="w-full group" asChild>

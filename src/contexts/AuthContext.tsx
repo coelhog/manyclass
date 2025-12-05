@@ -103,6 +103,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // preventing redundant fetches while keeping deps clean
         if (!userRef.current || userRef.current.id !== currentSession.user.id) {
           fetchProfile(currentSession.user.id)
+        } else {
+          // If we already have the user loaded, we must ensure loading is turned off
+          // This handles cases where login sets loading=true but processSession skips fetch
+          setIsLoading(false)
         }
       } else {
         setUser(null)

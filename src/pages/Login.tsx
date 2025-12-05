@@ -38,10 +38,8 @@ export default function Login() {
   const location = useLocation()
 
   // Effect to redirect authenticated users to dashboard
-  // This ensures redirection happens only when user data is fully loaded (isLoading === false)
   useEffect(() => {
     if (user && !isLoading) {
-      // Get the return path from location state or default to dashboard
       const from = location.state?.from?.pathname || '/'
       navigate(from, { replace: true })
     }
@@ -56,10 +54,8 @@ export default function Login() {
         title: 'Login realizado com sucesso!',
         description: 'Bem-vindo ao Manyclass.',
       })
-      // No manual navigation needed here.
-      // The login() call sets isLoading(true) in context.
-      // Once profile is fetched, isLoading becomes false and user is set.
-      // The useEffect hook above will then trigger the redirect.
+      // Do NOT set isLoggingIn(false) here if success,
+      // as we want to keep the spinner until redirection happens via useEffect
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -110,8 +106,6 @@ export default function Login() {
     }
   }
 
-  // Show loading spinner if global auth loading is active to prevent form flashing
-  // This covers the period when checking for existing session on mount
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
