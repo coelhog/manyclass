@@ -75,10 +75,10 @@ export default function StudentDashboard() {
     : undefined
 
   // Check for overdue payments or expired subscription
-  const hasOverdue payments = payments.some((p) => p.status === 'overdue')
+  const hasOverduePayments = payments.some((p) => p.status === 'overdue')
   const isSubscriptionExpired =
     subscription?.status === 'expired' || subscription?.status === 'past_due'
-  const isAccessRestricted = hasOverdue payments || isSubscriptionExpired
+  const isAccessRestricted = hasOverduePayments || isSubscriptionExpired
 
   return (
     <PageTransition className="space-y-8">
