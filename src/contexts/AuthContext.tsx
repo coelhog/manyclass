@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { User } from '@/types'
 import { supabase } from '@/lib/supabase/client'
 import { Session } from '@supabase/supabase-js'
-import { onboardingService } from '@/services/onboardingService'
 
 interface GoogleAuthData {
   email: string
@@ -109,11 +108,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const login = async (email: string, password: string) => {
+    // Set loading true immediately to prevent premature redirection in Layout
+    // when navigation happens before profile fetch is complete
+    setIsLoading(true)
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
-    if (error) throw error
+    if (error) {
+      setIsLoading(false)
+      throw error
+    }
   }
 
   const loginAsStudent = async () => {

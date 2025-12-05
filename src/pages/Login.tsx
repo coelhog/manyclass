@@ -45,14 +45,17 @@ export default function Login() {
         title: 'Login realizado com sucesso!',
         description: 'Bem-vindo ao Manyclass.',
       })
-      navigate('/')
+
+      // Delay navigation to show success message briefly
+      setTimeout(() => {
+        navigate('/')
+      }, 1000)
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Erro ao fazer login',
         description: error.message || 'Verifique suas credenciais.',
       })
-    } finally {
       setIsLoggingIn(false)
     }
   }
