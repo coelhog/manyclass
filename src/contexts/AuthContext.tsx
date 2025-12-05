@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       fetchingIdRef.current = userId
+      // Ensure loading is true while fetching
       setIsLoading(true)
 
       const { data: profile, error } = await supabase
@@ -76,7 +77,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error('Error fetching profile:', error)
         // If profile fetch fails (e.g., data inconsistency), sign out to reset state
-        // This prevents infinite loading or stuck states
         await supabase.auth.signOut()
         setUser(null)
         setSession(null)
@@ -99,13 +99,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       console.error('Unexpected error fetching profile:', err)
-      // Ensure we don't leave the app in a loading state
       await supabase.auth.signOut()
       setUser(null)
       setSession(null)
     } finally {
       fetchingIdRef.current = null
       if (isMounted.current) {
+        // Only set loading to false after we've attempted to load the user
         setIsLoading(false)
       }
     }
@@ -170,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false)
       throw error
     }
-    // If successful, onAuthStateChange will handle profile fetch and loading state
+    // If successful, onAuthStateChange will handle profile fetch and set isLoading to false when done
   }
 
   const loginAsStudent = async () => {
@@ -217,6 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw error
     }
     if (!data.session) {
+      // If email confirmation is required, session might be null, stop loading
       setIsLoading(false)
     }
   }

@@ -38,6 +38,7 @@ export default function Login() {
   const location = useLocation()
 
   // Effect to redirect authenticated users to dashboard
+  // This ensures users are not stuck on the login page
   useEffect(() => {
     if (user && !isLoading) {
       const from = location.state?.from?.pathname || '/'
@@ -45,8 +46,7 @@ export default function Login() {
     }
   }, [user, isLoading, navigate, location])
 
-  // Effect to reset local loading state if auth loading finishes without a user
-  // This prevents infinite spinners on login failures or cancellations
+  // Reset local loading state if auth loading finishes without a user (e.g. login error)
   useEffect(() => {
     if (!isLoading && !user) {
       setIsLoggingIn(false)
@@ -63,7 +63,8 @@ export default function Login() {
         title: 'Login realizado com sucesso!',
         description: 'Bem-vindo ao Manyclass.',
       })
-      // We keep isLoggingIn true until redirection happens or error resets it
+      // Note: isLoggingIn remains true here while AuthContext updates state.
+      // The redirection effect will trigger once user is set.
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -114,7 +115,9 @@ export default function Login() {
     }
   }
 
-  if (isLoading) {
+  // If global loading or if user is present (about to redirect), show spinner
+  // preventing the form from flashing before redirection
+  if (isLoading || user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
