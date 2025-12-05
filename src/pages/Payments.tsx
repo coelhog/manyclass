@@ -16,40 +16,17 @@ import { Payment, Student } from '@/types'
 import { PageTransition } from '@/components/PageTransition'
 import { TableSkeleton } from '@/components/skeletons'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
-import { MultiSelect } from '@/components/ui/multi-select'
-import { CurrencyInput } from '@/components/ui/currency-input'
-import { DatePicker } from '@/components/ui/date-picker'
+import { PaymentDialog } from '@/components/payments/PaymentDialog'
 
 export default function Payments() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [students, setStudents] = useState<Student[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isEditOpen, setIsEditOpen] = useState(false)
-  const [editingPayment, setEditingPayment] = useState<Payment | null>(null)
-
-  const [newPayment, setNewPayment] = useState<{
-    studentIds: string[]
-    description: string
-    amount: number
-    dueDate: Date | undefined
-  }>({
-    studentIds: [] as string[],
-    description: '',
-    amount: 0,
-    dueDate: new Date(),
-  })
+  const [editingPayment, setEditingPayment] = useState<Payment | undefined>(
+    undefined,
+  )
   const { toast } = useToast()
 
   useEffect(() => {
@@ -70,70 +47,52 @@ export default function Payments() {
     }
   }
 
-  const handleCreate = async () => {
-    if (newPayment.studentIds.length === 0 || !newPayment.amount) {
+  const handleSave = async (data: any) => {
+    if ((!editingPayment && data.studentIds.length === 0) || !data.amount) {
       toast({
         variant: 'destructive',
         title: 'Preencha os campos obrigatórios',
       })
       return
     }
-    try {
-      // Create a payment for each selected student
-      for (const studentId of newPayment.studentIds) {
-        await studentService.createPayment({
-          studentId: studentId,
-          description: newPayment.description,
-          amount: newPayment.amount,
-          status: 'pending',
-          dueDate: newPayment.dueDate
-            ? newPayment.dueDate.toISOString()
-            : new Date().toISOString(),
-        })
-      }
 
-      toast({ title: 'Pagamentos registrados com sucesso!' })
+    try {
+      if (editingPayment) {
+        // Mock update for now as studentService needs update method
+        // In real app: await studentService.updatePayment(editingPayment.id, { ... })
+        toast({ title: 'Pagamento atualizado! (Simulação)' })
+      } else {
+        for (const studentId of data.studentIds) {
+          await studentService.createPayment({
+            studentId: studentId,
+            description: data.description,
+            amount: data.amount,
+            status: 'pending',
+            dueDate: data.dueDate
+              ? data.dueDate.toISOString()
+              : new Date().toISOString(),
+          })
+        }
+        toast({ title: 'Pagamentos registrados com sucesso!' })
+      }
       setIsDialogOpen(false)
+      setEditingPayment(undefined)
       loadData()
-      setNewPayment({
-        studentIds: [],
-        description: '',
-        amount: 0,
-        dueDate: new Date(),
-      })
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Erro ao registrar pagamento' })
+      toast({ variant: 'destructive', title: 'Erro ao salvar pagamento' })
     }
   }
 
-  // Note: studentService currently doesn't have updatePayment, we should mock or add it if we had access to change backend service deeply.
-  // For now assuming user story implies UI capability, and I'll implement simple update if possible or just UI
-  // Actually, the user story says "user must be able to update its associated date".
-  // I should probably add `updatePayment` to `studentService` but I cannot modify `studentService` too much without verifying types.
-  // Wait, `studentService` IS modifiable. I'll check if I can add updatePayment there.
-  // Currently `studentService` only has `createPayment` and `getAllPayments`.
-  // I will need to implement update in `studentService` (via supabase update).
-
-  // For now, let's mock the update function here to show UI intent, or add it to service if I update service file.
-  // I will update `studentService` in a later step to support updates.
-
   const openEdit = (payment: Payment) => {
     setEditingPayment(payment)
-    setIsEditOpen(true)
+    setIsDialogOpen(true)
   }
 
-  const handleUpdatePayment = async () => {
-    if (!editingPayment) return
-    // Implement actual update logic here when service is ready
-    // For now, we just close and toast
-    toast({ title: 'Pagamento atualizado! (Simulação)' })
-    setIsEditOpen(false)
-    // Real implementation would be:
-    // await studentService.updatePayment(editingPayment.id, { dueDate: editingPayment.dueDate, ... })
-    // loadData()
+  const openCreate = () => {
+    setEditingPayment(undefined)
+    setIsDialogOpen(true)
   }
 
-  // Calculate summaries based on actual payment data
   const totalRevenue = payments
     .filter((p) => p.status === 'paid')
     .reduce((acc, curr) => acc + curr.amount, 0)
@@ -144,142 +103,17 @@ export default function Payments() {
     .filter((p) => p.status === 'overdue')
     .reduce((acc, curr) => acc + curr.amount, 0)
 
-  const studentOptions = students.map((s) => ({
-    label: s.name,
-    value: s.id,
-  }))
-
   return (
     <PageTransition className="space-y-8">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Pagamentos</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="shadow-sm hover:shadow-md transition-all">
-              <Plus className="mr-2 h-4 w-4" /> Registrar Pagamento
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Novo Pagamento</DialogTitle>
-              <DialogDescription>
-                Registre um novo pagamento manual para um ou mais alunos.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="student" className="text-right">
-                  Alunos
-                </Label>
-                <div className="col-span-3">
-                  <MultiSelect
-                    options={studentOptions}
-                    selected={newPayment.studentIds}
-                    onChange={(selected) =>
-                      setNewPayment({ ...newPayment, studentIds: selected })
-                    }
-                    placeholder="Selecione os alunos"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="description" className="text-right">
-                  Descrição
-                </Label>
-                <Input
-                  id="description"
-                  className="col-span-3"
-                  value={newPayment.description}
-                  onChange={(e) =>
-                    setNewPayment({
-                      ...newPayment,
-                      description: e.target.value,
-                    })
-                  }
-                  placeholder="Ex: Mensalidade Junho"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="amount" className="text-right">
-                  Valor (R$)
-                </Label>
-                <div className="col-span-3">
-                  <CurrencyInput
-                    id="amount"
-                    value={newPayment.amount}
-                    onChange={(val) =>
-                      setNewPayment({
-                        ...newPayment,
-                        amount: val,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="dueDate" className="text-right">
-                  Vencimento
-                </Label>
-                <div className="col-span-3">
-                  <DatePicker
-                    date={newPayment.dueDate}
-                    setDate={(date) =>
-                      setNewPayment({ ...newPayment, dueDate: date })
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleCreate}>Registrar</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button
+          className="shadow-sm hover:shadow-md transition-all"
+          onClick={openCreate}
+        >
+          <Plus className="mr-2 h-4 w-4" /> Registrar Pagamento
+        </Button>
       </div>
-
-      {/* Edit Dialog */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Pagamento</DialogTitle>
-          </DialogHeader>
-          {editingPayment && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Descrição</Label>
-                <Input
-                  className="col-span-3"
-                  value={editingPayment.description || ''}
-                  onChange={(e) =>
-                    setEditingPayment({
-                      ...editingPayment,
-                      description: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Vencimento</Label>
-                <div className="col-span-3">
-                  <DatePicker
-                    date={new Date(editingPayment.dueDate)}
-                    setDate={(date) =>
-                      date &&
-                      setEditingPayment({
-                        ...editingPayment,
-                        dueDate: date.toISOString(),
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button onClick={handleUpdatePayment}>Salvar Alterações</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <div className="grid gap-4 md:grid-cols-3">
         {isLoading ? (
@@ -396,6 +230,14 @@ export default function Payments() {
           </Table>
         </div>
       )}
+
+      <PaymentDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSave={handleSave}
+        students={students}
+        initialData={editingPayment}
+      />
     </PageTransition>
   )
 }

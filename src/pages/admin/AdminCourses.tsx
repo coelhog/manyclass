@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Card,
   CardContent,
@@ -9,35 +8,20 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/hooks/use-toast'
 import { courseService } from '@/services/courseService'
 import { PlatformCourse } from '@/types'
 import { Plus, Trash2, Video, Edit } from 'lucide-react'
 import { CardGridSkeleton } from '@/components/skeletons'
+import { CourseDialog } from '@/components/admin/CourseDialog'
 
 export default function AdminCourses() {
   const [courses, setCourses] = useState<PlatformCourse[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [currentCourse, setCurrentCourse] = useState<Partial<PlatformCourse>>({
-    title: '',
-    description: '',
-    videoUrl: '',
-    isActive: true,
-  })
+  const [editingCourse, setEditingCourse] = useState<
+    PlatformCourse | undefined
+  >(undefined)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -55,24 +39,17 @@ export default function AdminCourses() {
   }
 
   const handleOpenCreate = () => {
-    setIsEditing(false)
-    setCurrentCourse({
-      title: '',
-      description: '',
-      videoUrl: '',
-      isActive: true,
-    })
+    setEditingCourse(undefined)
     setIsDialogOpen(true)
   }
 
   const handleOpenEdit = (course: PlatformCourse) => {
-    setIsEditing(true)
-    setCurrentCourse(course)
+    setEditingCourse(course)
     setIsDialogOpen(true)
   }
 
-  const handleSave = async () => {
-    if (!currentCourse.title || !currentCourse.videoUrl) {
+  const handleSave = async (courseData: Partial<PlatformCourse>) => {
+    if (!courseData.title || !courseData.videoUrl) {
       toast({
         variant: 'destructive',
         title: 'Preencha os campos obrigatórios',
@@ -81,12 +58,12 @@ export default function AdminCourses() {
     }
 
     try {
-      if (isEditing && currentCourse.id) {
-        await courseService.update(currentCourse.id, currentCourse)
+      if (editingCourse && courseData.id) {
+        await courseService.update(courseData.id, courseData)
         toast({ title: 'Curso atualizado com sucesso!' })
       } else {
         await courseService.create(
-          currentCourse as Omit<PlatformCourse, 'id' | 'createdAt'>,
+          courseData as Omit<PlatformCourse, 'id' | 'createdAt'>,
         )
         toast({ title: 'Curso criado com sucesso!' })
       }
@@ -125,71 +102,6 @@ export default function AdminCourses() {
         </Button>
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>
-              {isEditing ? 'Editar Curso' : 'Novo Curso'}
-            </DialogTitle>
-            <DialogDescription>
-              Preencha os detalhes do vídeo/aula.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="title">Título</Label>
-              <Input
-                id="title"
-                value={currentCourse.title}
-                onChange={(e) =>
-                  setCurrentCourse({ ...currentCourse, title: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                value={currentCourse.description}
-                onChange={(e) =>
-                  setCurrentCourse({
-                    ...currentCourse,
-                    description: e.target.value,
-                  })
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="videoUrl">URL do Vídeo</Label>
-              <Input
-                id="videoUrl"
-                placeholder="https://..."
-                value={currentCourse.videoUrl}
-                onChange={(e) =>
-                  setCurrentCourse({
-                    ...currentCourse,
-                    videoUrl: e.target.value,
-                  })
-                }
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="active">Ativo</Label>
-              <Switch
-                id="active"
-                checked={currentCourse.isActive}
-                onCheckedChange={(checked) =>
-                  setCurrentCourse({ ...currentCourse, isActive: checked })
-                }
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleSave}>Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {isLoading ? (
         <CardGridSkeleton count={3} />
       ) : (
@@ -215,7 +127,6 @@ export default function AdminCourses() {
               </CardHeader>
               <CardContent>
                 <div className="aspect-video bg-muted rounded-md flex items-center justify-center overflow-hidden">
-                  {/* Simple thumbnail placeholder */}
                   <Video className="h-10 w-10 text-muted-foreground/50" />
                 </div>
               </CardContent>
@@ -250,6 +161,13 @@ export default function AdminCourses() {
           )}
         </div>
       )}
+
+      <CourseDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSave={handleSave}
+        initialData={editingCourse}
+      />
     </div>
   )
 }

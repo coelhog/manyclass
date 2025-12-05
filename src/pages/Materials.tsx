@@ -15,8 +15,6 @@ import {
   Eye,
   Trash2,
   Users,
-  Upload,
-  Loader2,
 } from 'lucide-react'
 import { PageTransition } from '@/components/PageTransition'
 import { CardGridSkeleton } from '@/components/skeletons'
@@ -31,12 +29,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { MaterialDialog } from '@/components/materials/MaterialDialog'
 
 export default function Materials() {
   const { user } = useAuth()
@@ -51,13 +49,6 @@ export default function Materials() {
     null,
   )
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
-
-  const [newMaterial, setNewMaterial] = useState({
-    title: '',
-    description: '',
-    studentIds: [] as string[],
-  })
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const { toast } = useToast()
 
   const loadData = useCallback(async () => {
@@ -83,34 +74,32 @@ export default function Materials() {
     loadData()
   }, [loadData])
 
-  const handleCreate = async () => {
-    if (!newMaterial.title) {
+  const handleCreate = async (data: any, file: File | null) => {
+    if (!data.title) {
       toast({ variant: 'destructive', title: 'Título é obrigatório' })
       return
     }
-    if (!selectedFile) {
+    if (!file) {
       toast({ variant: 'destructive', title: 'Selecione um arquivo' })
       return
     }
 
     setIsUploading(true)
     try {
-      const fileType = selectedFile.name.endsWith('.pdf') ? 'PDF' : 'Outro'
+      const fileType = file.name.endsWith('.pdf') ? 'PDF' : 'Outro'
 
       await materialService.create({
-        ...newMaterial,
-        file: selectedFile,
+        ...data,
+        file: file,
         fileType,
         studentIds:
-          newMaterial.studentIds.length > 0
-            ? newMaterial.studentIds
+          data.studentIds.length > 0
+            ? data.studentIds
             : students.map((s) => s.id),
         teacherId: user?.id,
       })
       toast({ title: 'Material enviado com sucesso!' })
       setIsDialogOpen(false)
-      setNewMaterial({ title: '', description: '', studentIds: [] })
-      setSelectedFile(null)
       loadData()
     } catch (error: any) {
       toast({
@@ -161,112 +150,12 @@ export default function Materials() {
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Materiais</h1>
         {user?.role === 'teacher' && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="shadow-sm hover:shadow-md transition-all">
-                <Plus className="mr-2 h-4 w-4" /> Upload de Material
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Novo Material</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Título</Label>
-                  <Input
-                    value={newMaterial.title}
-                    onChange={(e) =>
-                      setNewMaterial({ ...newMaterial, title: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Descrição</Label>
-                  <Input
-                    value={newMaterial.description}
-                    onChange={(e) =>
-                      setNewMaterial({
-                        ...newMaterial,
-                        description: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Arquivo</Label>
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-muted/50 cursor-pointer relative">
-                    <input
-                      type="file"
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      onChange={(e) =>
-                        setSelectedFile(e.target.files?.[0] || null)
-                      }
-                      accept=".pdf,.doc,.docx,.ppt,.pptx"
-                    />
-                    <div className="flex flex-col items-center">
-                      <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                      <p className="text-sm font-medium">
-                        {selectedFile
-                          ? selectedFile.name
-                          : 'Clique ou arraste o arquivo'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        PDF, DOCX, PPTX (Max 10MB)
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Enviar para (Opcional - Padrão: Todos)</Label>
-                  <ScrollArea className="h-[150px] border rounded-md p-2">
-                    {students.map((student) => (
-                      <div
-                        key={student.id}
-                        className="flex items-center space-x-2 py-1"
-                      >
-                        <Checkbox
-                          id={`student-${student.id}`}
-                          checked={newMaterial.studentIds.includes(student.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked)
-                              setNewMaterial((prev) => ({
-                                ...prev,
-                                studentIds: [...prev.studentIds, student.id],
-                              }))
-                            else
-                              setNewMaterial((prev) => ({
-                                ...prev,
-                                studentIds: prev.studentIds.filter(
-                                  (id) => id !== student.id,
-                                ),
-                              }))
-                          }}
-                        />
-                        <Label
-                          htmlFor={`student-${student.id}`}
-                          className="cursor-pointer"
-                        >
-                          {student.name}
-                        </Label>
-                      </div>
-                    ))}
-                  </ScrollArea>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={handleCreate} disabled={isUploading}>
-                  {isUploading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    'Enviar'
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button
+            className="shadow-sm hover:shadow-md transition-all"
+            onClick={() => setIsDialogOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" /> Upload de Material
+          </Button>
         )}
       </div>
 
@@ -441,6 +330,14 @@ export default function Materials() {
           )}
         </div>
       )}
+
+      <MaterialDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSave={handleCreate}
+        students={students}
+        isUploading={isUploading}
+      />
     </PageTransition>
   )
 }

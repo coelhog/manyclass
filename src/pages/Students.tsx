@@ -33,7 +33,6 @@ import {
   UserPlus,
   Copy,
   Check,
-  Key,
   Loader2,
 } from 'lucide-react'
 import {
@@ -49,9 +48,9 @@ import { Student } from '@/types'
 import { Link } from 'react-router-dom'
 import { PageTransition } from '@/components/PageTransition'
 import { TableSkeleton } from '@/components/skeletons'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { useAuth } from '@/contexts/AuthContext'
-import { PhoneInput } from '@/components/ui/phone-input'
+import { StudentDialog } from '@/components/students/StudentDialog'
+import { BulkStudentDialog } from '@/components/students/BulkStudentDialog'
 
 export default function Students() {
   const { user } = useAuth()
@@ -67,18 +66,6 @@ export default function Students() {
     password?: string
   } | null>(null)
   const [isCredentialsOpen, setIsCredentialsOpen] = useState(false)
-
-  const [newStudent, setNewStudent] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    level: 'A1',
-    password: '',
-  })
-
-  const [bulkStudents, setBulkStudents] = useState([
-    { name: '', email: '', group: '', groupName: '' },
-  ])
 
   const { toast } = useToast()
 
@@ -103,18 +90,8 @@ export default function Students() {
     student.name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const generatePassword = () => {
-    const chars =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$'
-    let password = ''
-    for (let i = 0; i < 8; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    return password
-  }
-
-  const handleCreate = async () => {
-    if (!newStudent.name || !newStudent.email) {
+  const handleCreate = async (studentData: any) => {
+    if (!studentData.name || !studentData.email) {
       toast({
         variant: 'destructive',
         title: 'Preencha os campos obrigatórios',
@@ -125,11 +102,12 @@ export default function Students() {
 
     setIsCreating(true)
     // Auto-generate password if not provided
-    const password = newStudent.password || generatePassword()
+    const password =
+      studentData.password || Math.random().toString(36).slice(-8)
 
     try {
       const created = await studentService.create({
-        ...newStudent,
+        ...studentData,
         teacherId: user.id,
         password,
         status: 'active',
@@ -139,7 +117,7 @@ export default function Students() {
 
       setStudents((prev) => [...prev, created])
       setCreatedStudent({
-        email: newStudent.email,
+        email: studentData.email,
         password: password,
       })
 
@@ -147,13 +125,6 @@ export default function Students() {
       setIsCredentialsOpen(true)
 
       toast({ title: 'Aluno criado com sucesso!' })
-      setNewStudent({
-        name: '',
-        email: '',
-        phone: '',
-        level: 'A1',
-        password: '',
-      })
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -170,9 +141,8 @@ export default function Students() {
     toast({ title: 'Copiado para a área de transferência' })
   }
 
-  const handleBulkCreate = async () => {
-    const validStudents = bulkStudents.filter((s) => s.name)
-    if (validStudents.length === 0) {
+  const handleBulkCreate = async (validStudents: any[]) => {
+    if (validStudents.filter((s) => s.name).length === 0) {
       toast({
         variant: 'destructive',
         title: 'Adicione pelo menos um aluno válido',
@@ -183,18 +153,20 @@ export default function Students() {
 
     setIsCreating(true)
     try {
-      const studentsToCreate = validStudents.map((s) => ({
-        teacherId: user.id,
-        name: s.name,
-        email:
-          s.email || `${s.name.toLowerCase().replace(/\s/g, '.')}@email.com`,
-        phone: '',
-        level: s.group || 'A1',
-        status: 'active' as const,
-        avatar: `https://img.usecurling.com/i?q=user&color=gray&shape=fill`,
-        joinedAt: new Date().toISOString().split('T')[0],
-        password: generatePassword(),
-      }))
+      const studentsToCreate = validStudents
+        .filter((s) => s.name)
+        .map((s) => ({
+          teacherId: user.id,
+          name: s.name,
+          email:
+            s.email || `${s.name.toLowerCase().replace(/\s/g, '.')}@email.com`,
+          phone: '',
+          level: s.group || 'A1',
+          status: 'active' as const,
+          avatar: `https://img.usecurling.com/i?q=user&color=gray&shape=fill`,
+          joinedAt: new Date().toISOString().split('T')[0],
+          password: Math.random().toString(36).slice(-8),
+        }))
 
       const createdStudentsData =
         await studentService.createBulk(studentsToCreate)
@@ -242,10 +214,9 @@ export default function Students() {
       }
 
       toast({
-        title: `${validStudents.length} alunos adicionados com sucesso!`,
+        title: `${validStudents.filter((s) => s.name).length} alunos adicionados com sucesso!`,
       })
       setIsBulkDialogOpen(false)
-      setBulkStudents([{ name: '', email: '', group: '', groupName: '' }])
     } catch (error) {
       console.error(error)
       toast({ variant: 'destructive', title: 'Erro ao adicionar alunos' })
@@ -270,7 +241,7 @@ export default function Students() {
             status: 'active' as const,
             avatar: '',
             joinedAt: new Date().toISOString(),
-            password: generatePassword(),
+            password: Math.random().toString(36).slice(-8),
           },
         ]
         const created = await studentService.createBulk(mockImported)
@@ -295,19 +266,6 @@ export default function Students() {
         toast({ variant: 'destructive', title: 'Erro ao remover aluno' })
       }
     }
-  }
-
-  const addBulkRow = () => {
-    setBulkStudents([
-      ...bulkStudents,
-      { name: '', email: '', group: '', groupName: '' },
-    ])
-  }
-
-  const updateBulkRow = (index: number, field: string, value: string) => {
-    const newBulk = [...bulkStudents]
-    newBulk[index] = { ...newBulk[index], [field]: value }
-    setBulkStudents(newBulk)
   }
 
   return (
@@ -359,199 +317,20 @@ export default function Students() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="shadow-sm">
-                <UserPlus className="mr-2 h-4 w-4" /> Adicionar Vários Alunos
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl">
-              <DialogHeader>
-                <DialogTitle>Adicionar Múltiplos Alunos</DialogTitle>
-                <DialogDescription>
-                  Preencha os dados dos alunos abaixo. Senhas serão geradas
-                  automaticamente.
-                </DialogDescription>
-              </DialogHeader>
-              <ScrollArea className="h-[300px] pr-4">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-4 gap-4 font-medium text-sm text-muted-foreground mb-2">
-                    <div>Nome do Aluno</div>
-                    <div>Email (Opcional)</div>
-                    <div>Grupo (Nível)</div>
-                    <div>Nome do Grupo (Turma)</div>
-                  </div>
-                  {bulkStudents.map((student, index) => (
-                    <div
-                      key={index}
-                      className="grid grid-cols-4 gap-4 items-center border-b pb-4"
-                    >
-                      <Input
-                        placeholder="Nome"
-                        value={student.name}
-                        onChange={(e) =>
-                          updateBulkRow(index, 'name', e.target.value)
-                        }
-                      />
-                      <Input
-                        placeholder="Email"
-                        value={student.email}
-                        onChange={(e) =>
-                          updateBulkRow(index, 'email', e.target.value)
-                        }
-                      />
-                      <Input
-                        placeholder="Ex: A1"
-                        value={student.group}
-                        onChange={(e) =>
-                          updateBulkRow(index, 'group', e.target.value)
-                        }
-                      />
-                      <Input
-                        placeholder="Ex: Inglês Básico"
-                        value={student.groupName}
-                        onChange={(e) =>
-                          updateBulkRow(index, 'groupName', e.target.value)
-                        }
-                      />
-                    </div>
-                  ))}
-                  <Button
-                    variant="ghost"
-                    onClick={addBulkRow}
-                    className="w-full"
-                  >
-                    <Plus className="mr-2 h-4 w-4" /> Adicionar Linha
-                  </Button>
-                </div>
-              </ScrollArea>
-              <DialogFooter>
-                <Button onClick={handleBulkCreate} disabled={isCreating}>
-                  {isCreating ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    'Salvar Todos'
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button
+            variant="outline"
+            className="shadow-sm"
+            onClick={() => setIsBulkDialogOpen(true)}
+          >
+            <UserPlus className="mr-2 h-4 w-4" /> Adicionar Vários Alunos
+          </Button>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="shadow-sm hover:shadow-md transition-all">
-                <Plus className="mr-2 h-4 w-4" /> Novo Aluno
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Adicionar Novo Aluno</DialogTitle>
-                <DialogDescription>
-                  Crie uma conta para o aluno acessar a plataforma.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Nome
-                  </Label>
-                  <Input
-                    id="name"
-                    className="col-span-3"
-                    value={newStudent.name}
-                    onChange={(e) =>
-                      setNewStudent({ ...newStudent, name: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    className="col-span-3"
-                    value={newStudent.email}
-                    onChange={(e) =>
-                      setNewStudent({ ...newStudent, email: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="phone" className="text-right">
-                    Telefone
-                  </Label>
-                  <div className="col-span-3">
-                    <PhoneInput
-                      id="phone"
-                      value={newStudent.phone}
-                      onChange={(val) =>
-                        setNewStudent({ ...newStudent, phone: val })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="level" className="text-right">
-                    Nível
-                  </Label>
-                  <Input
-                    id="level"
-                    className="col-span-3"
-                    value={newStudent.level}
-                    onChange={(e) =>
-                      setNewStudent({ ...newStudent, level: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="password" className="text-right">
-                    Senha
-                  </Label>
-                  <div className="col-span-3 flex gap-2">
-                    <Input
-                      id="password"
-                      value={newStudent.password}
-                      onChange={(e) =>
-                        setNewStudent({
-                          ...newStudent,
-                          password: e.target.value,
-                        })
-                      }
-                      placeholder="Gerar automaticamente"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() =>
-                        setNewStudent({
-                          ...newStudent,
-                          password: generatePassword(),
-                        })
-                      }
-                      title="Gerar senha"
-                    >
-                      <Key className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  type="submit"
-                  onClick={handleCreate}
-                  disabled={isCreating}
-                >
-                  {isCreating ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    'Criar Conta'
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button
+            className="shadow-sm hover:shadow-md transition-all"
+            onClick={() => setIsDialogOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" /> Novo Aluno
+          </Button>
 
           {/* Credentials Display Dialog */}
           <Dialog open={isCredentialsOpen} onOpenChange={setIsCredentialsOpen}>
@@ -707,6 +486,20 @@ export default function Students() {
           </Table>
         </div>
       )}
+
+      <StudentDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSave={handleCreate}
+        isSaving={isCreating}
+      />
+
+      <BulkStudentDialog
+        isOpen={isBulkDialogOpen}
+        onClose={() => setIsBulkDialogOpen(false)}
+        onSave={handleBulkCreate}
+        isSaving={isCreating}
+      />
     </PageTransition>
   )
 }

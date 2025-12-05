@@ -6,29 +6,18 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from '@/components/ui/card'
 import { scheduleService } from '@/services/scheduleService'
 import { TeacherSchedule as ScheduleType } from '@/types'
 import { PageTransition } from '@/components/PageTransition'
 import { useToast } from '@/hooks/use-toast'
-import { Check, Copy, ExternalLink, Settings } from 'lucide-react'
+import { Copy, ExternalLink, Settings } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/contexts/AuthContext'
 import { Link } from 'react-router-dom'
-
-const DAYS = [
-  'Domingo',
-  'Segunda',
-  'Terça',
-  'Quarta',
-  'Quinta',
-  'Sexta',
-  'Sábado',
-]
-const HOURS = Array.from({ length: 13 }, (_, i) => i + 8) // 8:00 to 20:00
+import { ScheduleGrid } from '@/components/schedule/ScheduleGrid'
 
 export default function TeacherSchedule() {
   const { user } = useAuth()
@@ -60,7 +49,7 @@ export default function TeacherSchedule() {
       (s) => s.dayOfWeek === dayIndex && s.startTime === startTime,
     )
 
-    let newAvailability = [...schedule.availability]
+    const newAvailability = [...schedule.availability]
 
     if (existingSlotIndex >= 0) {
       newAvailability.splice(existingSlotIndex, 1)
@@ -93,14 +82,6 @@ export default function TeacherSchedule() {
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro ao salvar configurações' })
     }
-  }
-
-  const isSlotActive = (dayIndex: number, hour: number) => {
-    if (!schedule) return false
-    const startTime = `${hour.toString().padStart(2, '0')}:00`
-    return schedule.availability.some(
-      (s) => s.dayOfWeek === dayIndex && s.startTime === startTime,
-    )
   }
 
   const bookingLink = `${window.location.origin}/book/${user?.id || 'demo'}`
@@ -138,50 +119,7 @@ export default function TeacherSchedule() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <div className="min-w-[700px]">
-                <div className="grid grid-cols-8 gap-2 mb-4">
-                  <div className="font-bold text-center py-2 text-sm">
-                    Horário
-                  </div>
-                  {DAYS.map((day) => (
-                    <div
-                      key={day}
-                      className="font-bold text-center py-2 bg-muted/30 rounded-md text-sm"
-                    >
-                      {day.slice(0, 3)}
-                    </div>
-                  ))}
-                </div>
-
-                {HOURS.map((hour) => (
-                  <div key={hour} className="grid grid-cols-8 gap-2 mb-2">
-                    <div className="flex items-center justify-center text-xs text-muted-foreground">
-                      {hour}:00
-                    </div>
-                    {DAYS.map((_, dayIndex) => {
-                      const active = isSlotActive(dayIndex, hour)
-                      return (
-                        <div
-                          key={`${dayIndex}-${hour}`}
-                          onClick={() => toggleSlot(dayIndex, hour)}
-                          className={`
-                            h-10 rounded-md border flex items-center justify-center cursor-pointer transition-all
-                            ${
-                              active
-                                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                                : 'hover:bg-accent hover:border-accent-foreground/20 bg-card'
-                            }
-                          `}
-                        >
-                          {active && <Check className="h-4 w-4" />}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ScheduleGrid schedule={schedule} onToggleSlot={toggleSlot} />
           </CardContent>
         </Card>
 

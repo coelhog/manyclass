@@ -11,89 +11,24 @@ import {
 import { Plus, Search, Users, Clock, CreditCard } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { classService } from '@/services/classService'
-import { ClassGroup, BillingModel, ClassCategory } from '@/types'
+import { ClassGroup } from '@/types'
 import { Link } from 'react-router-dom'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { PageTransition } from '@/components/PageTransition'
 import { CardGridSkeleton } from '@/components/skeletons'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAuth } from '@/contexts/AuthContext'
-import { CurrencyInput } from '@/components/ui/currency-input'
-import { Switch } from '@/components/ui/switch'
-
-const DAYS = [
-  { label: 'Dom', value: 0 },
-  { label: 'Seg', value: 1 },
-  { label: 'Ter', value: 2 },
-  { label: 'Qua', value: 3 },
-  { label: 'Qui', value: 4 },
-  { label: 'Sex', value: 5 },
-  { label: 'Sáb', value: 6 },
-]
-
-const COLORS = [
-  { label: 'Azul', value: 'blue', class: 'bg-blue-500' },
-  { label: 'Verde', value: 'green', class: 'bg-green-500' },
-  { label: 'Vermelho', value: 'red', class: 'bg-red-500' },
-  { label: 'Amarelo', value: 'yellow', class: 'bg-yellow-500' },
-  { label: 'Roxo', value: 'purple', class: 'bg-purple-500' },
-  { label: 'Laranja', value: 'orange', class: 'bg-orange-500' },
-]
+import { ClassDialog } from '@/components/classes/ClassDialog'
+import { DAYS } from '@/lib/constants'
 
 export default function Classes() {
   const { user } = useAuth()
   const [classes, setClasses] = useState<ClassGroup[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isEditMode, setIsEditMode] = useState(false)
-  const [editClassId, setEditClassId] = useState<string | null>(null)
+  const [editClass, setEditClass] = useState<ClassGroup | undefined>(undefined)
   const [activeTab, setActiveTab] = useState<string>('all')
-  const [newClass, setNewClass] = useState<{
-    name: string
-    days: number[]
-    startTime: string
-    duration: number
-    billingModel: BillingModel
-    price: number
-    category: ClassCategory
-    studentLimit?: number
-    color: string
-    syncGoogle: boolean
-    generateMeet: boolean
-    meetLink: string
-  }>({
-    name: '',
-    days: [],
-    startTime: '09:00',
-    duration: 60,
-    billingModel: 'per_student',
-    price: 0,
-    category: 'individual',
-    studentLimit: 1,
-    color: 'blue',
-    syncGoogle: false,
-    generateMeet: false,
-    meetLink: '',
-  })
-  const [isCreating, setIsCreating] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
 
   const loadClasses = useCallback(async () => {
@@ -101,11 +36,7 @@ export default function Classes() {
     setIsLoading(true)
     try {
       const data = await classService.getByTeacherId(user.id)
-      if (Array.isArray(data)) {
-        setClasses(data)
-      } else {
-        setClasses([])
-      }
+      setClasses(Array.isArray(data) ? data : [])
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -121,116 +52,73 @@ export default function Classes() {
     loadClasses()
   }, [loadClasses])
 
-  const resetForm = () => {
-    setNewClass({
-      name: '',
-      days: [],
-      startTime: '09:00',
-      duration: 60,
-      billingModel: 'per_student',
-      price: 0,
-      category: 'individual',
-      studentLimit: 1,
-      color: 'blue',
-      syncGoogle: false,
-      generateMeet: false,
-      meetLink: '',
-    })
-    setIsEditMode(false)
-    setEditClassId(null)
-  }
-
   const handleOpenCreate = () => {
-    resetForm()
+    setEditClass(undefined)
     setIsDialogOpen(true)
   }
 
   const handleOpenEdit = (cls: ClassGroup) => {
-    setIsEditMode(true)
-    setEditClassId(cls.id)
-    setNewClass({
-      name: cls.name,
-      days: cls.days,
-      startTime: cls.startTime,
-      duration: cls.duration,
-      billingModel: cls.billingModel,
-      price: cls.price,
-      category: cls.category,
-      studentLimit: cls.studentLimit,
-      color: cls.color,
-      syncGoogle: false, // Default to false for edit unless we fetch sync state
-      generateMeet: false,
-      meetLink: cls.meetLink || '',
-    })
+    setEditClass(cls)
     setIsDialogOpen(true)
   }
 
-  const handleCreateOrUpdate = async () => {
-    if (!newClass.name) {
-      toast({ variant: 'destructive', title: 'Nome da turma é obrigatório' })
-      return
-    }
-    if (newClass.days.length === 0) {
-      toast({ variant: 'destructive', title: 'Selecione pelo menos um dia' })
-      return
-    }
+  const handleSave = async (data: any) => {
     if (!user) return
+    setIsSaving(true)
 
-    setIsCreating(true)
-    const daysStr = newClass.days
+    const daysStr = data.days
       .sort()
-      .map((d) => DAYS.find((day) => day.value === d)?.label)
+      .map((d: number) => DAYS.find((day) => day.value === d)?.label)
       .join('/')
-    const scheduleStr = `${daysStr} ${newClass.startTime}`
+    const scheduleStr = `${daysStr} ${data.startTime}`
 
     const commonData = {
-      name: newClass.name,
-      days: newClass.days,
-      startTime: newClass.startTime,
-      duration: newClass.duration,
-      billingModel: newClass.billingModel,
-      price: newClass.price,
-      category: newClass.category,
-      studentLimit: newClass.studentLimit,
-      color: newClass.color,
+      name: data.name,
+      days: data.days,
+      startTime: data.startTime,
+      duration: data.duration,
+      billingModel: data.billingModel,
+      price: data.price,
+      category: data.category,
+      studentLimit: data.studentLimit,
+      color: data.color,
       teacherId: user.id,
       schedule: scheduleStr,
       status: 'active' as const,
-      meetLink: newClass.meetLink,
+      meetLink: data.meetLink,
     }
 
     try {
-      if (isEditMode && editClassId) {
+      if (editClass) {
         await classService.updateClass(
-          editClassId,
+          editClass.id,
           {
             ...commonData,
-            studentIds: classes.find((c) => c.id === editClassId)?.studentIds,
-          }, // Preserve students on edit
-          { syncGoogle: newClass.syncGoogle },
+            studentIds: editClass.studentIds,
+          },
+          { syncGoogle: data.syncGoogle },
         )
         toast({ title: 'Turma atualizada com sucesso!' })
       } else {
         await classService.createClass(
           { ...commonData, studentIds: [] },
           {
-            syncGoogle: newClass.syncGoogle,
-            generateMeet: newClass.generateMeet,
+            syncGoogle: data.syncGoogle,
+            generateMeet: data.generateMeet,
           },
         )
         toast({ title: 'Turma criada com sucesso!' })
       }
       setIsDialogOpen(false)
       loadClasses()
-      resetForm()
     } catch (error) {
       console.error(error)
       toast({
         variant: 'destructive',
-        title: isEditMode ? 'Erro ao atualizar turma' : 'Erro ao criar turma',
+        title: editClass ? 'Erro ao atualizar turma' : 'Erro ao criar turma',
       })
     } finally {
-      setIsCreating(false)
+      setIsSaving(false)
     }
   }
 
@@ -243,261 +131,12 @@ export default function Classes() {
     <PageTransition className="space-y-8">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Turmas</h1>
-        <Dialog
-          open={isDialogOpen}
-          onOpenChange={(open) => {
-            setIsDialogOpen(open)
-            if (!open) resetForm()
-          }}
+        <Button
+          className="shadow-sm hover:shadow-md transition-all"
+          onClick={handleOpenCreate}
         >
-          <DialogTrigger asChild>
-            <Button
-              className="shadow-sm hover:shadow-md transition-all"
-              onClick={handleOpenCreate}
-            >
-              <Plus className="mr-2 h-4 w-4" /> Criar Turma
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {isEditMode ? 'Editar Turma' : 'Nova Turma'}
-              </DialogTitle>
-              <DialogDescription>
-                Configure os detalhes da turma.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Nome
-                </Label>
-                <Input
-                  id="name"
-                  className="col-span-3"
-                  value={newClass.name}
-                  onChange={(e) =>
-                    setNewClass({ ...newClass, name: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="category" className="text-right">
-                  Categoria
-                </Label>
-                <Select
-                  value={newClass.category}
-                  onValueChange={(v) =>
-                    setNewClass({
-                      ...newClass,
-                      category: v as ClassCategory,
-                      billingModel: 'per_student',
-                      studentLimit: v === 'individual' ? 1 : 10,
-                    })
-                  }
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="individual">Aluno Individual</SelectItem>
-                    <SelectItem value="group">Grupo</SelectItem>
-                    <SelectItem value="class">Turma</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {newClass.category !== 'individual' && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="limit" className="text-right">
-                    Limite de Alunos
-                  </Label>
-                  <Input
-                    id="limit"
-                    type="number"
-                    className="col-span-3"
-                    value={newClass.studentLimit}
-                    onChange={(e) =>
-                      setNewClass({
-                        ...newClass,
-                        studentLimit: Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-              )}
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Dias</Label>
-                <div className="col-span-3">
-                  <ToggleGroup
-                    type="multiple"
-                    variant="outline"
-                    value={newClass.days.map(String)}
-                    onValueChange={(val) =>
-                      setNewClass({
-                        ...newClass,
-                        days: val.map(Number),
-                      })
-                    }
-                    className="justify-start flex-wrap"
-                  >
-                    {DAYS.map((day) => (
-                      <ToggleGroupItem
-                        key={day.value}
-                        value={String(day.value)}
-                        className="h-8 w-8 p-0"
-                      >
-                        {day.label.charAt(0)}
-                      </ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="time" className="text-right">
-                  Horário
-                </Label>
-                <div className="col-span-3 flex gap-2">
-                  <Input
-                    id="time"
-                    type="time"
-                    value={newClass.startTime}
-                    onChange={(e) =>
-                      setNewClass({ ...newClass, startTime: e.target.value })
-                    }
-                    className="flex-1"
-                  />
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      value={newClass.duration}
-                      onChange={(e) =>
-                        setNewClass({
-                          ...newClass,
-                          duration: Number(e.target.value),
-                        })
-                      }
-                      className="w-20"
-                    />
-                    <span className="text-sm text-muted-foreground">min</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="billing" className="text-right">
-                  Cobrança
-                </Label>
-                <Select
-                  value={newClass.billingModel}
-                  onValueChange={(v) =>
-                    setNewClass({
-                      ...newClass,
-                      billingModel: v as BillingModel,
-                    })
-                  }
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="per_student">
-                      Por Aluno (Mensalidade)
-                    </SelectItem>
-                    <SelectItem value="per_class">
-                      Por Turma (Valor Fixo)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="price" className="text-right">
-                  Preço (R$)
-                </Label>
-                <div className="col-span-3">
-                  <CurrencyInput
-                    id="price"
-                    value={newClass.price}
-                    onChange={(val) => setNewClass({ ...newClass, price: val })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Cor</Label>
-                <Select
-                  value={newClass.color}
-                  onValueChange={(v) => setNewClass({ ...newClass, color: v })}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COLORS.map((color) => (
-                      <SelectItem key={color.value} value={color.value}>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`w-3 h-3 rounded-full ${color.class}`}
-                          />
-                          {color.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Link Meet</Label>
-                <Input
-                  className="col-span-3"
-                  value={newClass.meetLink}
-                  onChange={(e) =>
-                    setNewClass({ ...newClass, meetLink: e.target.value })
-                  }
-                  placeholder="https://meet.google.com/..."
-                />
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4 border-t pt-4">
-                <Label className="text-right">Google Meet</Label>
-                <div className="col-span-3 flex items-center gap-2">
-                  <Switch
-                    checked={newClass.generateMeet}
-                    onCheckedChange={(checked) =>
-                      setNewClass({ ...newClass, generateMeet: checked })
-                    }
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    Gerar link automaticamente
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Google Calendar</Label>
-                <div className="col-span-3 flex items-center gap-2">
-                  <Switch
-                    checked={newClass.syncGoogle}
-                    onCheckedChange={(checked) =>
-                      setNewClass({ ...newClass, syncGoogle: checked })
-                    }
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    Sincronizar agenda
-                  </span>
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleCreateOrUpdate} disabled={isCreating}>
-                {isCreating ? 'Salvando...' : isEditMode ? 'Salvar' : 'Criar'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          <Plus className="mr-2 h-4 w-4" /> Criar Turma
+        </Button>
       </div>
 
       <div className="flex flex-col gap-4">
@@ -596,6 +235,14 @@ export default function Classes() {
           )}
         </div>
       )}
+
+      <ClassDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSave={handleSave}
+        initialData={editClass}
+        isSaving={isSaving}
+      />
     </PageTransition>
   )
 }
