@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -56,7 +56,7 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/book/:teacherId" element={<BookingPage />} />
 
-            {/* Onboarding Route (Protected by AuthContext redirection in Onboarding component) */}
+            {/* Onboarding Route (Protected by AuthContext redirection logic) */}
             <Route path="/onboarding" element={<Onboarding />} />
 
             {/* Admin Routes */}
@@ -76,7 +76,11 @@ const App = () => (
 
             {/* App Routes */}
             <Route element={<Layout />}>
-              <Route path="/" element={<Index />} />
+              {/* Redirect root to dashboard when authenticated */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              {/* Dashboard route */}
+              <Route path="/dashboard" element={<Index />} />
+
               <Route path="/plans" element={<Plans />} />
               <Route path="/students" element={<Students />} />
               <Route path="/students/:id" element={<StudentDetail />} />

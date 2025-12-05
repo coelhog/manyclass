@@ -52,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user])
 
   useEffect(() => {
+    isMounted.current = true
     return () => {
       isMounted.current = false
     }
@@ -63,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       fetchingIdRef.current = userId
-      // Only set loading to true if it's not already
+      // Only set loading to true if it's not already (though usually safe to set)
       setIsLoading(true)
 
       const { data: profile, error } = await supabase
@@ -96,6 +97,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           onboardingCompleted: profile.onboarding_completed,
         }
         setUser(appUser)
+      } else {
+        // User exists in auth but not profiles (rare edge case), logout or handle gracefully
+        await supabase.auth.signOut()
+        setUser(null)
+        setSession(null)
       }
     } catch (err) {
       console.error('Unexpected error fetching profile:', err)
@@ -105,55 +111,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       fetchingIdRef.current = null
       if (isMounted.current) {
-        // Profile fetch complete, stop loading
         setIsLoading(false)
       }
     }
   }, [])
 
   useEffect(() => {
-    const processSession = (currentSession: Session | null) => {
-      setSession(currentSession)
-      if (currentSession?.user) {
-        // Check if we need to fetch profile (if user not loaded or different user)
-        if (!userRef.current || userRef.current.id !== currentSession.user.id) {
+    // Initial Session Check
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      if (isMounted.current) {
+        setSession(currentSession)
+        if (currentSession?.user) {
           fetchProfile(currentSession.user.id)
         } else {
-          // Already have the user loaded, ensure loading is off
-          // This handles cases where auth state event fires but user is already stable
+          setUser(null)
           setIsLoading(false)
         }
-      } else {
-        // No session, clear user and loading
-        setUser(null)
-        setIsLoading(false)
-      }
-    }
-
-    // Check active session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (isMounted.current) {
-        processSession(session)
       }
     })
 
-    // Listen for auth changes
+    // Auth State Listener
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isMounted.current) {
-        processSession(session)
+    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      if (!isMounted.current) return
+
+      setSession(currentSession)
+
+      if (currentSession?.user) {
+        // If user is different or not loaded, fetch
+        if (!userRef.current || userRef.current.id !== currentSession.user.id) {
+          fetchProfile(currentSession.user.id)
+        } else {
+          // User already loaded and matches session, ensure loading is false
+          setIsLoading(false)
+        }
+      } else {
+        // No session
+        setUser(null)
+        setIsLoading(false)
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [fetchProfile]) // Removed isLoading from dependencies to prevent loops
+  }, [fetchProfile])
 
   const checkSubscriptionAccess = () => {
     if (!user) return { allowed: false, reason: 'Not logged in' }
     if (user.role === 'admin') return { allowed: true }
     if (user.role === 'student') return { allowed: true }
 
+    // Simplified check for teachers - assumes valid plan if plan_id exists
     if (user.plan_id) {
       return { allowed: true }
     }
@@ -171,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false)
       throw error
     }
-    // onAuthStateChange will handle success
+    // onAuthStateChange will handle the rest
   }
 
   const loginAsStudent = async () => {
@@ -211,14 +219,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           full_name: name,
           role: role,
         },
+        emailRedirectTo: `${window.location.origin}/login`,
       },
     })
     if (error) {
       setIsLoading(false)
       throw error
     }
+    // If email confirmation is required (which it is by default), session might be null
+    // We stop loading here so the UI can show the success message
     if (!data.session) {
-      // If email confirmation is required, session might be null, stop loading
       setIsLoading(false)
     }
   }

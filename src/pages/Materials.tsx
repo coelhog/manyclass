@@ -15,6 +15,7 @@ import {
   Eye,
   Trash2,
   Users,
+  Loader2,
 } from 'lucide-react'
 import { PageTransition } from '@/components/PageTransition'
 import { CardGridSkeleton } from '@/components/skeletons'
@@ -161,29 +162,42 @@ export default function Materials() {
 
       {/* View Dialog */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-4xl h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>{selectedMaterial?.title}</DialogTitle>
+        <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              {selectedMaterial?.fileType === 'PDF' ? (
+                <FileText className="h-5 w-5" />
+              ) : (
+                <Download className="h-5 w-5" />
+              )}
+              {selectedMaterial?.title}
+            </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 h-full bg-muted/20 rounded-md overflow-hidden">
+
+          <div className="flex-1 bg-slate-100 dark:bg-slate-900 relative overflow-hidden">
             {selectedMaterial?.fileType === 'PDF' &&
             selectedMaterial.fileUrl ? (
               <iframe
                 src={selectedMaterial.fileUrl}
-                className="w-full h-full"
+                className="w-full h-full border-none"
                 title="PDF Viewer"
               />
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
-                <p>Visualização não disponível para este formato.</p>
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4 p-8">
+                <FileText className="h-16 w-16 opacity-20" />
+                <p className="text-lg font-medium">
+                  Visualização não disponível para este formato.
+                </p>
                 {selectedMaterial?.fileUrl && (
-                  <Button asChild>
+                  <Button asChild size="lg">
                     <a
                       href={selectedMaterial.fileUrl}
                       target="_blank"
                       rel="noreferrer"
+                      className="gap-2"
                     >
-                      <Download className="mr-2 h-4 w-4" /> Baixar Arquivo
+                      <Download className="h-5 w-5" />
+                      Baixar Arquivo
                     </a>
                   </Button>
                 )}
@@ -251,7 +265,7 @@ export default function Materials() {
           {materials.map((material) => (
             <Card
               key={material.id}
-              className="group hover:border-primary transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+              className="group hover:border-primary transition-all duration-300 hover:-translate-y-1 hover:shadow-md flex flex-col"
             >
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div className="bg-muted p-2 rounded-md group-hover:bg-primary/10 transition-colors">
@@ -280,7 +294,7 @@ export default function Materials() {
                   </div>
                 )}
               </CardHeader>
-              <CardContent className="pt-4">
+              <CardContent className="pt-4 flex-1">
                 <CardTitle className="text-base line-clamp-1">
                   {material.title}
                 </CardTitle>
@@ -288,21 +302,27 @@ export default function Materials() {
                   {material.fileType} •{' '}
                   {new Date(material.uploadedAt).toLocaleDateString()}
                 </p>
+                {material.description && (
+                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                    {material.description}
+                  </p>
+                )}
                 {user?.role === 'teacher' && (
-                  <p className="text-xs text-muted-foreground mt-2">
+                  <p className="text-xs text-muted-foreground mt-2 bg-muted/50 p-1 rounded w-fit">
                     Acesso: {material.studentIds.length} alunos
                   </p>
                 )}
               </CardContent>
-              <CardFooter className="flex justify-end gap-2">
+              <CardFooter className="flex justify-end gap-2 border-t p-3 bg-muted/5">
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="sm"
                   title="Visualizar"
-                  className="hover:text-primary"
+                  className="flex-1 hover:text-primary gap-2"
                   onClick={() => handleView(material)}
                 >
                   <Eye className="h-4 w-4" />
+                  Visualizar
                 </Button>
                 <Button
                   variant="ghost"
@@ -324,8 +344,12 @@ export default function Materials() {
             </Card>
           ))}
           {materials.length === 0 && (
-            <div className="col-span-full text-center text-muted-foreground py-10">
-              Nenhum material encontrado.
+            <div className="col-span-full flex flex-col items-center justify-center text-muted-foreground py-12 border-2 border-dashed rounded-lg">
+              <FileText className="h-12 w-12 mb-4 opacity-20" />
+              <p className="font-medium">Nenhum material encontrado.</p>
+              <p className="text-sm">
+                Faça upload de PDFs ou documentos para seus alunos.
+              </p>
             </div>
           )}
         </div>

@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Loader2, BookOpen, MailCheck, ArrowRight } from 'lucide-react'
+import { Loader2, BookOpen, MailCheck, CheckCircle2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -75,19 +75,30 @@ export default function Register() {
           <CardHeader className="text-center">
             <div className="flex justify-center mb-6">
               <div className="bg-green-100 p-4 rounded-full">
-                <MailCheck className="w-10 h-10 text-green-600" />
+                <MailCheck className="w-16 h-16 text-green-600" />
               </div>
             </div>
             <CardTitle className="text-2xl font-bold mb-2">
               Verifique seu Email
             </CardTitle>
             <CardDescription className="text-base">
-              Enviamos um link de confirmação para <strong>{email}</strong>.
-              <br />
-              Clique no link para ativar sua conta e começar.
+              Enviamos um link de confirmação para{' '}
+              <strong className="text-foreground">{email}</strong>.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            <div className="bg-muted/30 p-4 rounded-lg text-sm text-muted-foreground flex gap-3 items-start text-left">
+              <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+              <div>
+                <p>Para ativar sua conta:</p>
+                <ol className="list-decimal ml-4 mt-1 space-y-1">
+                  <li>Abra seu email</li>
+                  <li>Procure pela mensagem do Manyclass</li>
+                  <li>Clique no link de confirmação</li>
+                </ol>
+              </div>
+            </div>
+
             <Button
               variant="outline"
               className="w-full"
@@ -96,8 +107,7 @@ export default function Register() {
               Voltar para Login
             </Button>
             <p className="text-xs text-center text-muted-foreground">
-              Não recebeu o email? Verifique sua pasta de spam ou lixo
-              eletrônico.
+              Não recebeu o email? Verifique sua pasta de spam.
             </p>
           </CardContent>
         </Card>

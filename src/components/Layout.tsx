@@ -36,7 +36,11 @@ export default function Layout() {
   }
 
   // Redirect to Onboarding if not completed and user is a teacher
-  if (user.role === 'teacher' && !user.onboardingCompleted) {
+  if (
+    user.role === 'teacher' &&
+    !user.onboardingCompleted &&
+    location.pathname !== '/onboarding'
+  ) {
     return <Navigate to="/onboarding" replace />
   }
 
@@ -75,7 +79,7 @@ export default function Layout() {
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback>US</AvatarFallback>
+                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
