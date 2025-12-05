@@ -4,8 +4,8 @@ VALUES ('materials', 'materials', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. Set up security policies for the 'materials' bucket
--- Enable RLS on objects if not already enabled
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- Note: We skip enabling RLS on storage.objects as it requires ownership permissions
+-- and is typically enabled by default in Supabase Storage.
 
 -- Policy: Authenticated users can upload (insert) files to 'materials' bucket
 DROP POLICY IF EXISTS "Authenticated users can upload materials" ON storage.objects;
@@ -29,8 +29,6 @@ TO authenticated
 USING (bucket_id = 'materials' AND owner = auth.uid());
 
 -- 3. Update Admin User Role (if the user exists)
--- This attempts to set the role to 'admin' for the specified email
 UPDATE public.profiles
 SET role = 'admin'
 WHERE email = 'contato@gecoelho.com';
-
