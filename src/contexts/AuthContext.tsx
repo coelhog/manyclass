@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from 'react'
 import { User } from '@/types'
 import { supabase } from '@/lib/supabase/client'
 import { Session } from '@supabase/supabase-js'
@@ -34,40 +41,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Use ref to track user state for effect comparisons without adding to deps
+  const userRef = useRef(user)
+  const isMounted = useRef(true)
+
   useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
-        setIsLoading(false)
-      }
-    })
+    userRef.current = user
+  }, [user])
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      if (session?.user) {
-        // Only fetch profile if we don't have the user loaded or if the user ID changed
-        if (!user || user.id !== session.user.id) {
-          fetchProfile(session.user.id)
-        }
-      } else {
-        setUser(null)
-        setIsLoading(false)
-      }
-    })
+  useEffect(() => {
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
 
-    return () => subscription.unsubscribe()
-  }, [user]) // Add user as dependency to avoid unnecessary fetches but keep logic sound
-
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     try {
-      // Ensure loading state is true while fetching profile data
-      // This prevents components from accessing incomplete user state
-      if (!isLoading) setIsLoading(true)
+      setIsLoading(true)
 
       const { data: profile, error } = await supabase
         .from('profiles')
@@ -75,9 +65,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .single()
 
+      if (!isMounted.current) return
+
       if (error) {
         console.error('Error fetching profile:', error)
-        // If profile fetch fails, user state remains null
         return
       }
 
@@ -98,10 +89,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error('Unexpected error fetching profile:', err)
     } finally {
-      // Critical: Always set loading to false when data fetching is done (success or fail)
-      setIsLoading(false)
+      if (isMounted.current) {
+        setIsLoading(false)
+      }
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    const processSession = (currentSession: Session | null) => {
+      setSession(currentSession)
+      if (currentSession?.user) {
+        // Use ref to check if we already have this user loaded
+        // preventing redundant fetches while keeping deps clean
+        if (!userRef.current || userRef.current.id !== currentSession.user.id) {
+          fetchProfile(currentSession.user.id)
+        }
+      } else {
+        setUser(null)
+        setIsLoading(false)
+      }
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (isMounted.current) {
+        processSession(session)
+      }
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMounted.current) {
+        processSession(session)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [fetchProfile])
 
   const checkSubscriptionAccess = () => {
     if (!user) return { allowed: false, reason: 'Not logged in' }
@@ -117,8 +141,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const login = async (email: string, password: string) => {
-    // Set loading true immediately to prevent premature redirection in Layout
-    // when navigation happens before profile fetch is complete
     setIsLoading(true)
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -128,13 +150,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false)
       throw error
     }
-    // On success, onAuthStateChange will trigger fetchProfile
-    // which eventually sets isLoading(false)
   }
 
   const loginAsStudent = async () => {
-    // For demo purposes, this mimics "quick student login" if we have a known student
-    // In production, students should login normally
     throw new Error('Função de login rápido desativada em produção.')
   }
 
@@ -143,7 +161,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const loginWithGoogle = async () => {
-    // OAuth redirect happens here, so loading state persists until page unload
     setIsLoading(true)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -179,7 +196,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw error
     }
     // Registration might not auto-login if email confirmation is on
-    // so we reset loading if no session is established immediately
     if (!data.session) {
       setIsLoading(false)
     }
