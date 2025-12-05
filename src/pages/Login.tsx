@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,11 +21,11 @@ import {
 } from '@/components/ui/dialog'
 import { Search, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 
 export default function Login() {
-  const { login, loginWithGoogle } = useAuth()
+  const { login, loginWithGoogle, user, isLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoggingIn, setIsLoggingIn] = useState(false)
@@ -35,6 +35,17 @@ export default function Login() {
 
   const { toast } = useToast()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Effect to redirect authenticated users to dashboard
+  // This ensures redirection happens only when user data is fully loaded (isLoading === false)
+  useEffect(() => {
+    if (user && !isLoading) {
+      // Get the return path from location state or default to dashboard
+      const from = location.state?.from?.pathname || '/'
+      navigate(from, { replace: true })
+    }
+  }, [user, isLoading, navigate, location])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,11 +56,10 @@ export default function Login() {
         title: 'Login realizado com sucesso!',
         description: 'Bem-vindo ao Manyclass.',
       })
-
-      // Delay navigation to show success message briefly
-      setTimeout(() => {
-        navigate('/')
-      }, 1000)
+      // No manual navigation needed here.
+      // The login() call sets isLoading(true) in context.
+      // Once profile is fetched, isLoading becomes false and user is set.
+      // The useEffect hook above will then trigger the redirect.
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -64,7 +74,7 @@ export default function Login() {
     setIsGoogleLoggingIn(true)
     try {
       await loginWithGoogle()
-      // Note: This will redirect away, so no toast needed here usually
+      // Redirect handled by OAuth flow (page unload/redirect)
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -98,6 +108,16 @@ export default function Login() {
         description: error.message,
       })
     }
+  }
+
+  // Show loading spinner if global auth loading is active to prevent form flashing
+  // This covers the period when checking for existing session on mount
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (

@@ -50,7 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       if (session?.user) {
-        fetchProfile(session.user.id)
+        // Only fetch profile if we don't have the user loaded or if the user ID changed
+        if (!user || user.id !== session.user.id) {
+          fetchProfile(session.user.id)
+        }
       } else {
         setUser(null)
         setIsLoading(false)
@@ -58,10 +61,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [user]) // Add user as dependency to avoid unnecessary fetches but keep logic sound
 
   const fetchProfile = async (userId: string) => {
     try {
+      // Ensure loading state is true while fetching profile data
+      // This prevents components from accessing incomplete user state
+      if (!isLoading) setIsLoading(true)
+
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -70,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('Error fetching profile:', error)
+        // If profile fetch fails, user state remains null
         return
       }
 
@@ -90,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error('Unexpected error fetching profile:', err)
     } finally {
+      // Critical: Always set loading to false when data fetching is done (success or fail)
       setIsLoading(false)
     }
   }
@@ -119,6 +128,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false)
       throw error
     }
+    // On success, onAuthStateChange will trigger fetchProfile
+    // which eventually sets isLoading(false)
   }
 
   const loginAsStudent = async () => {
@@ -132,13 +143,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const loginWithGoogle = async () => {
+    // OAuth redirect happens here, so loading state persists until page unload
+    setIsLoading(true)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/`,
       },
     })
-    if (error) throw error
+    if (error) {
+      setIsLoading(false)
+      throw error
+    }
   }
 
   const register = async (
@@ -147,6 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string,
     role: 'teacher' | 'student',
   ) => {
+    setIsLoading(true)
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -157,7 +174,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       },
     })
-    if (error) throw error
+    if (error) {
+      setIsLoading(false)
+      throw error
+    }
+    // Registration might not auto-login if email confirmation is on
+    // so we reset loading if no session is established immediately
+    if (!data.session) {
+      setIsLoading(false)
+    }
   }
 
   const updateUser = async (data: Partial<User>) => {
@@ -188,8 +213,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async () => {
+    setIsLoading(true)
     await supabase.auth.signOut()
     setUser(null)
+    setSession(null)
+    setIsLoading(false)
   }
 
   return (
