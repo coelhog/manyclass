@@ -38,6 +38,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  // We don't expose session but track it internally if needed, mostly used to check changes
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -63,7 +64,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       fetchingIdRef.current = userId
-      // Ensure loading is true while fetching
+      // Only set loading to true if it's not already, to avoid unnecessary re-renders,
+      // but usually we want to ensure we block interaction while fetching profile.
       setIsLoading(true)
 
       const { data: profile, error } = await supabase
@@ -105,7 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       fetchingIdRef.current = null
       if (isMounted.current) {
-        // Only set loading to false after we've attempted to load the user
+        // Profile fetch complete, stop loading
         setIsLoading(false)
       }
     }
@@ -115,12 +117,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const processSession = (currentSession: Session | null) => {
       setSession(currentSession)
       if (currentSession?.user) {
-        // Check if we need to fetch profile
+        // Check if we need to fetch profile (if user not loaded or different user)
         if (!userRef.current || userRef.current.id !== currentSession.user.id) {
           fetchProfile(currentSession.user.id)
         } else {
-          // Already have the user loaded, just ensure loading is off
-          setIsLoading(false)
+          // Already have the user loaded, ensure loading is off
+          // This handles cases where auth state event fires but user is already stable
+          if (isLoading) setIsLoading(false)
         }
       } else {
         // No session, clear user and loading
@@ -129,14 +132,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Check active session
+    // Check active session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (isMounted.current) {
         processSession(session)
       }
     })
 
-    // Listen for changes
+    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -146,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [fetchProfile])
+  }, [fetchProfile, isLoading])
 
   const checkSubscriptionAccess = () => {
     if (!user) return { allowed: false, reason: 'Not logged in' }
@@ -170,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false)
       throw error
     }
-    // If successful, onAuthStateChange will handle profile fetch and set isLoading to false when done
+    // onAuthStateChange will handle success
   }
 
   const loginAsStudent = async () => {

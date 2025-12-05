@@ -52,14 +52,11 @@ export default function Dashboard() {
   ]
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      // Safety check: if user is missing, we shouldn't be here (Layout protects),
-      // but we must ensure we don't get stuck in loading state.
-      if (!user) {
-        setIsLoading(false)
-        return
-      }
+    // Only fetch if user exists and is a teacher.
+    // If user is student, StudentDashboard handles fetching.
+    if (!user || user.role === 'student') return
 
+    const loadDashboardData = async () => {
       setIsLoading(true)
       try {
         // Fetch data for logged-in teacher
@@ -106,7 +103,7 @@ export default function Dashboard() {
     }
 
     loadDashboardData()
-  }, [user])
+  }, [user?.id, user?.role]) // Safe dependency on primitive values
 
   if (user?.role === 'student') {
     return <StudentDashboard />

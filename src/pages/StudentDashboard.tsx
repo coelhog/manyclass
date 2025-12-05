@@ -37,10 +37,8 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     const loadData = async () => {
-      if (!user) {
-        setIsLoading(false)
-        return
-      }
+      if (!user) return
+
       setIsLoading(true)
       try {
         const [allTasks, sub, allPayments] = await Promise.all([
@@ -58,7 +56,7 @@ export default function StudentDashboard() {
       }
     }
     loadData()
-  }, [user])
+  }, [user?.id]) // Use user.id to prevent excessive re-renders
 
   const pendingTasks = tasks.filter((t) => t.status === 'open').slice(0, 3)
 
