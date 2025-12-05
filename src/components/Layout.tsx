@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { useToast } from '@/hooks/use-toast'
 import { BottomNav } from './BottomNav'
 import { useIsMobile } from '@/hooks/use-mobile'
 
@@ -22,6 +21,7 @@ export default function Layout() {
   const isMobile = useIsMobile()
   const location = useLocation()
 
+  // Show loading spinner while auth state is initializing
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -30,6 +30,7 @@ export default function Layout() {
     )
   }
 
+  // Redirect unauthenticated users to login
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }

@@ -44,6 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Use ref to track user state for effect comparisons without adding to deps
   const userRef = useRef(user)
   const isMounted = useRef(true)
+  // Prevents duplicate fetches for the same user ID
+  const fetchingIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     userRef.current = user
@@ -56,7 +58,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const fetchProfile = useCallback(async (userId: string) => {
+    // Prevent duplicate fetches for the same user
+    if (fetchingIdRef.current === userId) return
+
     try {
+      fetchingIdRef.current = userId
       setIsLoading(true)
 
       const { data: profile, error } = await supabase
@@ -69,6 +75,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('Error fetching profile:', error)
+        // If profile fetch fails (e.g., data inconsistency), sign out to reset state
+        // This prevents infinite loading or stuck states
+        await supabase.auth.signOut()
+        setUser(null)
+        setSession(null)
         return
       }
 
@@ -88,7 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       console.error('Unexpected error fetching profile:', err)
+      // Ensure we don't leave the app in a loading state
+      await supabase.auth.signOut()
+      setUser(null)
+      setSession(null)
     } finally {
+      fetchingIdRef.current = null
       if (isMounted.current) {
         setIsLoading(false)
       }
@@ -99,27 +115,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const processSession = (currentSession: Session | null) => {
       setSession(currentSession)
       if (currentSession?.user) {
-        // Use ref to check if we already have this user loaded
-        // preventing redundant fetches while keeping deps clean
+        // Check if we need to fetch profile
         if (!userRef.current || userRef.current.id !== currentSession.user.id) {
           fetchProfile(currentSession.user.id)
         } else {
-          // If we already have the user loaded, we must ensure loading is turned off
-          // This handles cases where login sets loading=true but processSession skips fetch
+          // Already have the user loaded, just ensure loading is off
           setIsLoading(false)
         }
       } else {
+        // No session, clear user and loading
         setUser(null)
         setIsLoading(false)
       }
     }
 
+    // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (isMounted.current) {
         processSession(session)
       }
     })
 
+    // Listen for changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -136,7 +153,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user.role === 'admin') return { allowed: true }
     if (user.role === 'student') return { allowed: true }
 
-    // Simple check for plan existence for now
     if (user.plan_id) {
       return { allowed: true }
     }
@@ -154,6 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false)
       throw error
     }
+    // If successful, onAuthStateChange will handle profile fetch and loading state
   }
 
   const loginAsStudent = async () => {
@@ -199,7 +216,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false)
       throw error
     }
-    // Registration might not auto-login if email confirmation is on
     if (!data.session) {
       setIsLoading(false)
     }
@@ -217,7 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       onboarding_completed: data.onboardingCompleted,
     }
 
-    // Remove undefined
+    // Remove undefined keys
     Object.keys(updates).forEach(
       (key) => updates[key] === undefined && delete updates[key],
     )

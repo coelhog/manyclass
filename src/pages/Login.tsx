@@ -45,6 +45,15 @@ export default function Login() {
     }
   }, [user, isLoading, navigate, location])
 
+  // Effect to reset local loading state if auth loading finishes without a user
+  // This prevents infinite spinners on login failures or cancellations
+  useEffect(() => {
+    if (!isLoading && !user) {
+      setIsLoggingIn(false)
+      setIsGoogleLoggingIn(false)
+    }
+  }, [isLoading, user])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoggingIn(true)
@@ -54,8 +63,7 @@ export default function Login() {
         title: 'Login realizado com sucesso!',
         description: 'Bem-vindo ao Manyclass.',
       })
-      // Do NOT set isLoggingIn(false) here if success,
-      // as we want to keep the spinner until redirection happens via useEffect
+      // We keep isLoggingIn true until redirection happens or error resets it
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -70,7 +78,7 @@ export default function Login() {
     setIsGoogleLoggingIn(true)
     try {
       await loginWithGoogle()
-      // Redirect handled by OAuth flow (page unload/redirect)
+      // Redirect handled by OAuth flow
     } catch (error: any) {
       toast({
         variant: 'destructive',
