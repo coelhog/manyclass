@@ -8,6 +8,7 @@ import Layout from './components/Layout'
 import Index from './pages/Index'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ResetPassword from './pages/ResetPassword'
 import Plans from './pages/Plans'
 import Students from './pages/Students'
 import StudentDetail from './pages/StudentDetail'
@@ -52,6 +53,7 @@ const App = () => (
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/book/:teacherId" element={<BookingPage />} />
 
             {/* Onboarding Route (Protected by AuthContext redirection in Onboarding component) */}

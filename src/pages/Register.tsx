@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Loader2, BookOpen } from 'lucide-react'
+import { Loader2, BookOpen, MailCheck, ArrowRight } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -22,6 +22,7 @@ export default function Register() {
   const role = 'teacher'
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
   const { toast } = useToast()
   const navigate = useNavigate()
 
@@ -36,11 +37,11 @@ export default function Register() {
     setIsLoading(true)
     try {
       await register(name, email, password, role)
+      setIsSuccess(true)
       toast({
-        title: 'Conta de professor criada!',
-        description: 'Bem-vindo ao Manyclass. Comece a gerenciar seus alunos.',
+        title: 'Cadastro iniciado!',
+        description: 'Verifique seu email para confirmar a conta.',
       })
-      navigate('/')
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -65,6 +66,43 @@ export default function Register() {
       })
       setIsGoogleLoading(false)
     }
+  }
+
+  if (isSuccess) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background p-4 animate-in fade-in duration-500">
+        <Card className="w-full max-w-md shadow-lg border-t-4 border-t-green-500">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-6">
+              <div className="bg-green-100 p-4 rounded-full">
+                <MailCheck className="w-10 h-10 text-green-600" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold mb-2">
+              Verifique seu Email
+            </CardTitle>
+            <CardDescription className="text-base">
+              Enviamos um link de confirmação para <strong>{email}</strong>.
+              <br />
+              Clique no link para ativar sua conta e começar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate('/login')}
+            >
+              Voltar para Login
+            </Button>
+            <p className="text-xs text-center text-muted-foreground">
+              Não recebeu o email? Verifique sua pasta de spam ou lixo
+              eletrônico.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -179,7 +217,7 @@ export default function Register() {
                       d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"
                     ></path>
                   </svg>
-                  Sign up with Google
+                  Google
                 </>
               )}
             </Button>
