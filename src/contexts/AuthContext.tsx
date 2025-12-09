@@ -64,7 +64,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       fetchingIdRef.current = userId
-      // Only set loading to true if it's not already (though usually safe to set)
+      // Only set loading to true if we are initiating a fetch,
+      // ensuring we provide feedback during the transition.
       setIsLoading(true)
 
       const { data: profile, error } = await supabase
@@ -117,18 +118,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    // Initial Session Check
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      if (isMounted.current) {
-        setSession(currentSession)
-        if (currentSession?.user) {
-          fetchProfile(currentSession.user.id)
-        } else {
-          setUser(null)
+    // Documentation Comment:
+    // This setTimeout is crucial to prevent a race condition during the initial authentication check.
+    // In some environments, Supabase's getSession() might resolve before the onAuthStateChange listener
+    // is fully established or might conflict with the initial state event. By pushing this check
+    // to the end of the event loop, we ensure that the listener is ready and that we don't
+    // trigger conflicting state updates, providing a more reliable login redirection flow.
+    const initSessionCheck = setTimeout(async () => {
+      if (!isMounted.current) return
+
+      try {
+        const {
+          data: { session: currentSession },
+        } = await supabase.auth.getSession()
+
+        if (isMounted.current) {
+          if (currentSession) {
+            setSession(currentSession)
+            // If we have a session but haven't fetched the user profile yet, do it now.
+            if (
+              !userRef.current ||
+              userRef.current.id !== currentSession.user.id
+            ) {
+              fetchProfile(currentSession.user.id)
+            }
+          } else {
+            // No session found, and if onAuthStateChange hasn't triggered a sign-in, we are done loading.
+            if (!session) {
+              setUser(null)
+              setIsLoading(false)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error during initial session check:', error)
+        if (isMounted.current) {
           setIsLoading(false)
         }
       }
-    })
+    }, 0)
 
     // Auth State Listener
     const {
@@ -153,7 +181,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(initSessionCheck)
+      subscription.unsubscribe()
+    }
   }, [fetchProfile])
 
   const checkSubscriptionAccess = () => {
