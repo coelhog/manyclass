@@ -123,12 +123,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    // Documentation Comment:
-    // This setTimeout is crucial to prevent a race condition during the initial authentication check.
-    // In some environments, Supabase's getSession() might resolve before the onAuthStateChange listener
-    // is fully established or might conflict with the initial state event. By pushing this check
-    // to the end of the event loop, we ensure that the listener is ready and that we don't
-    // trigger conflicting state updates, providing a more reliable login redirection flow.
+    // This setTimeout is crucial to mitigate race conditions with onAuthStateChange and ensure
+    // correct authentication state hydration, especially after OAuth/email validation.
+    // By adding a small delay (100ms), we allow the Supabase client to process any URL fragments
+    // (like access tokens from redirects) and update its internal session state before we explicitly
+    // check for it. This prevents "flashing" of unauthenticated states or loading loops where the
+    // session isn't immediately available upon component mount.
     const initSessionCheck = setTimeout(async () => {
       if (!isMounted.current) return
 
@@ -161,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsLoading(false)
         }
       }
-    }, 0)
+    }, 100)
 
     // Auth State Listener
     const {
