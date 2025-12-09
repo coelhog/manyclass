@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Use ref to track user state for effect comparisons without adding to deps
   const userRef = useRef(user)
+  const sessionRef = useRef(session)
   const isMounted = useRef(true)
   // Prevents duplicate fetches for the same user ID
   const fetchingIdRef = useRef<string | null>(null)
@@ -50,6 +51,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     userRef.current = user
   }, [user])
+
+  useEffect(() => {
+    sessionRef.current = session
+  }, [session])
 
   useEffect(() => {
     isMounted.current = true
@@ -144,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           } else {
             // No session found, and if onAuthStateChange hasn't triggered a sign-in, we are done loading.
-            if (!session) {
+            if (!sessionRef.current) {
               setUser(null)
               setIsLoading(false)
             }
