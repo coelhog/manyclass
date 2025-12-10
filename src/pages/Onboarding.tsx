@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { onboardingService } from '@/services/onboardingService'
-import { OnboardingQuestion, PlanType } from '@/types'
+import { OnboardingQuestion } from '@/types'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -16,15 +16,19 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import { CheckCircle, ArrowRight, SkipForward } from 'lucide-react'
+import { CheckCircle, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 import Plans from './Plans'
+
+// Special Step ID for Plans
+const PLAN_STEP_ID = 9999
 
 export default function Onboarding() {
   const { user, updateUser } = useAuth()
   const navigate = useNavigate()
-  const [step, setStep] = useState(1)
+  const [currentStepId, setCurrentStepId] = useState<number | null>(null)
   const [questions, setQuestions] = useState<OnboardingQuestion[]>([])
+  const [availableSteps, setAvailableSteps] = useState<number[]>([])
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -41,41 +45,65 @@ export default function Onboarding() {
 
     onboardingService.getQuestions().then((data) => {
       setQuestions(data)
+
+      // Determine available steps from questions
+      const questionSteps = Array.from(
+        new Set(data.map((q) => q.step).filter((s): s is number => s !== null)),
+      ).sort((a, b) => a - b)
+
+      // Add Plan Step at the end
+      const steps = [...questionSteps, PLAN_STEP_ID]
+      setAvailableSteps(steps)
+
+      if (steps.length > 0) {
+        setCurrentStepId(steps[0])
+      }
+
       setIsLoading(false)
     })
   }, [user, navigate])
-
-  const currentQuestions = questions.filter((q) => q.step === step)
-  const totalSteps = 4 // 3 question steps + 1 plan selection
 
   const handleAnswer = (questionId: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }))
   }
 
   const handleNext = async () => {
+    if (currentStepId === null) return
+
+    // Get current step questions
+    const stepQuestions = questions.filter((q) => q.step === currentStepId)
+
     // Validate current step
-    const unanswered = currentQuestions.some((q) => !answers[q.id])
+    const unanswered = stepQuestions.some((q) => !answers[q.id])
     if (unanswered) {
       toast.error('Por favor, responda todas as perguntas para continuar.')
       return
     }
 
-    if (step < 3) {
-      setStep(step + 1)
-    } else {
-      // Save answers before plan selection
-      setIsSaving(true)
-      try {
-        await Promise.all(
-          Object.entries(answers).map(([qId, ans]) =>
-            onboardingService.saveResponse(user!.id, qId, ans),
-          ),
-        )
-        setStep(4) // Go to Plan Selection
-      } catch (error) {
-        toast.error('Erro ao salvar respostas')
-      } finally {
-        setIsSaving(false)
+    // Find next step index
+    const currentIndex = availableSteps.indexOf(currentStepId)
+    const nextIndex = currentIndex + 1
+
+    if (nextIndex < availableSteps.length) {
+      const nextStepId = availableSteps[nextIndex]
+
+      // If moving to plan step, save first
+      if (nextStepId === PLAN_STEP_ID) {
+        setIsSaving(true)
+        try {
+          await Promise.all(
+            Object.entries(answers).map(([qId, ans]) =>
+              onboardingService.saveResponse(user!.id, qId, ans),
+            ),
+          )
+          setCurrentStepId(nextStepId)
+        } catch (error) {
+          toast.error('Erro ao salvar respostas')
+        } finally {
+          setIsSaving(false)
+        }
+      } else {
+        setCurrentStepId(nextStepId)
       }
     }
   }
@@ -93,11 +121,14 @@ export default function Onboarding() {
     }
   }
 
-  if (isLoading) return <div className="min-h-screen bg-background" />
+  if (isLoading || currentStepId === null)
+    return <div className="min-h-screen bg-background" />
 
-  const progress = (step / totalSteps) * 100
+  const currentIndex = availableSteps.indexOf(currentStepId)
+  const progress = ((currentIndex + 1) / availableSteps.length) * 100
 
-  if (step === 4) {
+  // Plan Step
+  if (currentStepId === PLAN_STEP_ID) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10 px-4">
         <div className="max-w-5xl mx-auto space-y-8">
@@ -120,13 +151,17 @@ export default function Onboarding() {
     )
   }
 
+  // Question Steps
+  const currentQuestions = questions.filter((q) => q.step === currentStepId)
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
       <Card className="w-full max-w-xl shadow-lg">
         <CardHeader>
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-medium text-muted-foreground">
-              Passo {step} de 3
+              Passo {currentIndex + 1} de {availableSteps.length - 1}{' '}
+              {/* Exclude plan step from count for UX */}
             </span>
             <span className="text-sm font-medium text-primary">
               Configuração Inicial
@@ -183,7 +218,9 @@ export default function Onboarding() {
             * Todas as perguntas são obrigatórias
           </div>
           <Button onClick={handleNext} disabled={isSaving} className="gap-2">
-            {step === 3 ? 'Finalizar Perguntas' : 'Próximo'}
+            {currentIndex === availableSteps.length - 2
+              ? 'Finalizar Perguntas'
+              : 'Próximo'}
             <ArrowRight className="h-4 w-4" />
           </Button>
         </CardFooter>

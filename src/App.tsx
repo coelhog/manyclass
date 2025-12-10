@@ -37,7 +37,6 @@ import AdminMetrics from './pages/admin/AdminMetrics'
 import AdminSettings from './pages/admin/AdminSettings'
 import AdminOnboarding from './pages/admin/AdminOnboarding'
 import AdminResponses from './pages/admin/AdminResponses'
-import AdminClasses from './pages/admin/AdminClasses'
 import AdminCourses from './pages/admin/AdminCourses'
 
 const App = () => (
@@ -66,7 +65,6 @@ const App = () => (
               <Route path="teachers" element={<TeachersList />} />
               <Route path="teachers/:id" element={<TeacherEdit />} />
               <Route path="courses" element={<AdminCourses />} />
-              <Route path="classes" element={<AdminClasses />} />
               <Route path="metrics" element={<AdminMetrics />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="onboarding" element={<AdminOnboarding />} />

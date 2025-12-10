@@ -7,7 +7,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { BookOpen, CheckCircle, DollarSign, Users, Video } from 'lucide-react'
+import {
+  BookOpen,
+  CheckCircle,
+  DollarSign,
+  Users,
+  Video,
+  Play,
+} from 'lucide-react'
 import {
   ChartContainer,
   ChartTooltip,
@@ -23,6 +30,7 @@ import { classService } from '@/services/classService'
 import { taskService } from '@/services/taskService'
 import { courseService } from '@/services/courseService'
 import { ClassGroup, PlatformCourse } from '@/types'
+import { getYouTubeThumbnail } from '@/lib/utils'
 
 const chartConfig = {
   revenue: {
@@ -199,33 +207,47 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-3">
-              {platformCourses.map((course) => (
-                <div
-                  key={course.id}
-                  className="bg-background/80 p-4 rounded-lg border shadow-sm hover:shadow-md transition-all cursor-pointer"
-                >
-                  <div className="aspect-video bg-muted rounded-md mb-3 flex items-center justify-center overflow-hidden">
-                    <Video className="h-8 w-8 text-muted-foreground/50" />
-                  </div>
-                  <h3
-                    className="font-semibold text-sm line-clamp-1"
-                    title={course.title}
-                  >
-                    {course.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                    {course.description}
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="w-full mt-3"
+              {platformCourses.map((course) => {
+                const thumbnail = course.videoUrl
+                  ? getYouTubeThumbnail(course.videoUrl)
+                  : null
+
+                return (
+                  <div
+                    key={course.id}
+                    className="bg-background/80 p-4 rounded-lg border shadow-sm hover:shadow-md transition-all cursor-pointer group"
                     onClick={() => window.open(course.videoUrl, '_blank')}
                   >
-                    Acessar
-                  </Button>
-                </div>
-              ))}
+                    <div className="aspect-video bg-muted rounded-md mb-3 flex items-center justify-center overflow-hidden relative">
+                      {thumbnail ? (
+                        <>
+                          <img
+                            src={thumbnail}
+                            alt={course.title}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
+                            <div className="bg-white/90 rounded-full p-3 shadow-lg transform group-hover:scale-110 transition-transform">
+                              <Play className="h-5 w-5 text-red-600 fill-current ml-0.5" />
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <Video className="h-8 w-8 text-muted-foreground/50" />
+                      )}
+                    </div>
+                    <h3
+                      className="font-semibold text-sm line-clamp-1 group-hover:text-primary transition-colors"
+                      title={course.title}
+                    >
+                      {course.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {course.description}
+                    </p>
+                  </div>
+                )
+              })}
             </div>
           </CardContent>
         </Card>

@@ -9,7 +9,6 @@ import {
   BarChart,
   FileText,
   List,
-  GraduationCap,
   Video,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -27,11 +26,6 @@ export default function AdminLayout() {
     { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
     { title: 'Professores', url: '/admin/teachers', icon: Users },
     { title: 'Cursos da Plataforma', url: '/admin/courses', icon: Video },
-    {
-      title: 'Gerenciamento de Aulas',
-      url: '/admin/classes',
-      icon: GraduationCap,
-    },
     { title: 'Métricas', url: '/admin/metrics', icon: BarChart },
     { title: 'Onboarding', url: '/admin/onboarding', icon: FileText },
     { title: 'Respostas', url: '/admin/responses', icon: List },

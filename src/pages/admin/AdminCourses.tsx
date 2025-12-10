@@ -14,6 +14,7 @@ import { PlatformCourse } from '@/types'
 import { Plus, Trash2, Video, Edit } from 'lucide-react'
 import { CardGridSkeleton } from '@/components/skeletons'
 import { CourseDialog } from '@/components/admin/CourseDialog'
+import { getYouTubeThumbnail } from '@/lib/utils'
 
 export default function AdminCourses() {
   const [courses, setCourses] = useState<PlatformCourse[]>([])
@@ -106,54 +107,75 @@ export default function AdminCourses() {
         <CardGridSkeleton count={3} />
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course) => (
-            <Card
-              key={course.id}
-              className={course.isActive ? '' : 'opacity-70'}
-            >
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <CardTitle
-                    className="text-lg line-clamp-1"
-                    title={course.title}
-                  >
-                    {course.title}
-                  </CardTitle>
-                  <Video className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <CardDescription className="line-clamp-2 h-10">
-                  {course.description}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="aspect-video bg-muted rounded-md flex items-center justify-center overflow-hidden">
-                  <Video className="h-10 w-10 text-muted-foreground/50" />
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {new Date(course.createdAt).toLocaleDateString()}
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleOpenEdit(course)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive"
-                    onClick={() => handleDelete(course.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardFooter>
-            </Card>
-          ))}
+          {courses.map((course) => {
+            const thumbnail = course.videoUrl
+              ? getYouTubeThumbnail(course.videoUrl)
+              : null
+
+            return (
+              <Card
+                key={course.id}
+                className={course.isActive ? '' : 'opacity-70'}
+              >
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <CardTitle
+                      className="text-lg line-clamp-1"
+                      title={course.title}
+                    >
+                      {course.title}
+                    </CardTitle>
+                    <Video className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <CardDescription className="line-clamp-2 h-10">
+                    {course.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video bg-muted rounded-md flex items-center justify-center overflow-hidden relative group">
+                    {thumbnail ? (
+                      <img
+                        src={thumbnail}
+                        alt={course.title}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      />
+                    ) : (
+                      <Video className="h-10 w-10 text-muted-foreground/50" />
+                    )}
+                    {thumbnail && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
+                        <div className="bg-white/90 rounded-full p-2">
+                          <Video className="h-6 w-6 text-red-600 fill-current" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(course.createdAt).toLocaleDateString()}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleOpenEdit(course)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive"
+                      onClick={() => handleDelete(course.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardFooter>
+              </Card>
+            )
+          })}
           {courses.length === 0 && (
             <div className="col-span-full text-center py-10 text-muted-foreground">
               Nenhum curso cadastrado.
